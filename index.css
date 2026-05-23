@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-[#0B0F19] antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  h1, h2, .font-serif {
+    font-family: 'Playfair Display', Georgia, Cambria, "Times New Roman", Times, serif;
+  }
+}

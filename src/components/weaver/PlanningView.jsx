@@ -6,15 +6,25 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-export default function PlanningView() {
+export default function PlanningView({ bookId = 'default_book' }) {
   const { user, setIsAuthModalOpen } = useAuth();
   const [activeTab, setActiveTab] = useState('characters');
 
-  // Shared States (persisted in local state to showcase interactive planning)
-  const [characters, setCharacters] = useState([
-    { id: '1', name: 'Dr. Lekhaa Vance', age: '32', gender: 'Female', species: 'Human', role: 'Protagonist', traits: 'Obsessive, brilliant, cautious', backstory: 'Discovered a submerged temple off the coast of Siren Island in 2024.', customFields: [] },
-    { id: '2', name: 'The Siren', age: 'Unknown', gender: 'Female', species: 'Siren (Mystical)', role: 'Antagonist', traits: 'Alluring, deceptive, powerful', backstory: 'Ancient entity bound to the obsidian sculpture in the depths.', customFields: [] }
-  ]);
+  // 1. Characters State
+  const [characters, setCharacters] = useState(() => {
+    const saved = localStorage.getItem(`oss_planning_characters_${bookId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return [
+      { id: '1', name: 'Protagonist', age: '32', gender: 'Female', species: 'Human', role: 'Protagonist', traits: 'Obsessive, brilliant, cautious', backstory: 'Discovered a submerged temple off the coast of Siren Island in 2024.', customFields: [] },
+      { id: '2', name: 'Antagonist', age: 'Unknown', gender: 'Female', species: 'Siren (Mystical)', role: 'Antagonist', traits: 'Alluring, deceptive, powerful', backstory: 'Ancient entity bound to the obsidian sculpture in the depths.', customFields: [] },
+      { id: '3', name: 'Mentor', age: '60', gender: 'Male', species: 'Human', role: 'Mentor', traits: 'Wise, cryptic, protective', backstory: 'Retired captain who knows the siren lore.', customFields: [] }
+    ];
+  });
   const [activeCharId, setActiveCharId] = useState('1');
 
   // New character inputs
@@ -23,28 +33,79 @@ export default function PlanningView() {
   const [customFieldValue, setCustomFieldValue] = useState('');
 
   // 2. Relationship Whiteboard States
-  const [connections, setConnections] = useState([
-    { from: '1', to: '2', label: 'Obsessed With' }
-  ]);
-  const [nodePositions, setNodePositions] = useState({
-    '1': { x: 100, y: 150 },
-    '2': { x: 450, y: 150 }
+  const [connections, setConnections] = useState(() => {
+    const saved = localStorage.getItem(`oss_planning_connections_${bookId}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      { from: '1', to: '3', fromAnchor: 'bottom', toAnchor: 'top', label: 'Trainee' }
+    ];
   });
+
+  const [nodePositions, setNodePositions] = useState(() => {
+    const saved = localStorage.getItem(`oss_planning_nodepos_${bookId}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return {
+      '1': { x: 360, y: 150 },
+      '2': { x: 530, y: 150 },
+      '3': { x: 450, y: 250 }
+    };
+  });
+
   const [draggingNodeId, setDraggingNodeId] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const whiteboardRef = useRef(null);
-  const [newConn, setNewConn] = useState({ from: '', to: '', label: '' });
+
+  // Drawing Connection temporary state
+  const [drawingFromNodeId, setDrawingFromNodeId] = useState(null);
+  const [drawingFromAnchor, setDrawingFromAnchor] = useState('');
+  const [currentMousePos, setCurrentMousePos] = useState({ x: 0, y: 0 });
+
+  // Renaming Node state
+  const [renamingCharId, setRenamingCharId] = useState(null);
+  const [renamingNameVal, setRenamingNameVal] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem(`oss_planning_nodepos_${bookId}`, JSON.stringify(nodePositions));
+  }, [nodePositions, bookId]);
+
+  useEffect(() => {
+    localStorage.setItem(`oss_planning_connections_${bookId}`, JSON.stringify(connections));
+  }, [connections, bookId]);
 
   // 3. World Building Lab States
-  const [worldData, setWorldData] = useState({
-    timePeriod: 'Neo-Maritime Victorian Era (Circa 1894)',
-    geography: 'Siren Island Basin—a volatile archipelago of black sand and obsidian spires.',
-    culture: 'Isolated deep-sea salvagers obsessed with salvaging ancient sunken technologies.',
-    politics: 'Rule of the Salvage Syndicate; meritocracy based on deep-sea diving depths.',
-    magicRules: 'Gravity distortions induced by sonic frequency modulations.',
-    economy: 'Trade of glowing marine pearls and fossilized deep sea relics.',
-    beliefs: 'Worship of the Siren of the Depths, believed to hum the original song of creation.'
+  const [worldCategories, setWorldCategories] = useState(() => {
+    const saved = localStorage.getItem(`oss_planning_world_${bookId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return [
+      { id: 'timePeriod', title: 'Time Period', placeholder: 'Describe the time period of your world...', value: 'Neo-Maritime Victorian Era (Circa 1894)' },
+      { id: 'geography', title: 'Geography', placeholder: 'Describe the geography of your world...', value: 'Siren Island Basin—a volatile archipelago of black sand and obsidian spires.' },
+      { id: 'culture', title: 'Culture & Society', placeholder: 'Describe the culture & society of your world...', value: 'Isolated deep-sea salvagers obsessed with salvaging ancient sunken technologies.' },
+      { id: 'politics', title: 'Politics & Power System', placeholder: 'Describe the politics & power system of your world...', value: 'Rule of the Salvage Syndicate; meritocracy based on deep-sea diving depths.' },
+      { id: 'magicRules', title: 'Magic or Technology Rules', placeholder: 'Describe the magic or technology rules of your world...', value: 'Gravity distortions induced by sonic frequency modulations.' },
+      { id: 'economy', title: 'Economy', placeholder: 'Describe the economy of your world...', value: 'Trade of glowing marine pearls and fossilized deep sea relics.' },
+      { id: 'beliefs', title: 'Beliefs', placeholder: 'Describe the beliefs of your world...', value: 'Worship of the Siren of the Depths, believed to hum the original song of creation.' },
+      { id: 'unique', title: 'What makes this world unique', placeholder: 'Describe what makes this world unique of your world...', value: 'A deep localized gravity well that bends light and sound frequencies.' },
+      { id: 'species', title: 'What are the people like — what species', placeholder: 'Describe what are the people like — what species of your world...', value: 'Mainly human salvagers, with legend of sirens lingering.' }
+    ];
   });
+  const [newWorldCategoryName, setNewWorldCategoryName] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem(`oss_planning_world_${bookId}`, JSON.stringify(worldCategories));
+  }, [worldCategories, bookId]);
 
   // 4. Fantasy Map States
   const [mapLabels, setMapLabels] = useState([
@@ -63,18 +124,31 @@ export default function PlanningView() {
   const mapCanvasRef = useRef(null);
 
   // 5. Movable Plot Points States
-  const [plots, setPlots] = useState([
-    { id: 'p_1', stage: 'Introduction', title: 'The Archeological Dig', desc: 'Lekhaa uncovers the obsidian mask inside a submerged temple.' },
-    { id: 'p_2', stage: 'Conflict', title: 'The Siren\'s Echo', desc: 'The mask begins to hum, causing sleep deprivation and visual auditory ghosts.' },
-    { id: 'p_3', stage: 'Climax', title: 'The Descent into Obsidian', desc: 'Lekhaa dives alone into the deepest trench to place the mask back.' },
-    { id: 'p_4', stage: 'Twist', title: 'The Siren is Vance', desc: 'Lekhaa realizes she is the re-incarnation of the entity that forged it.' },
-    { id: 'p_5', stage: 'Resolution', title: 'The Eternal Hum', desc: 'The voice stops, but the ink in her journal permanently glows purple.' }
-  ]);
+  const [plots, setPlots] = useState(() => {
+    const saved = localStorage.getItem(`oss_planning_plots_${bookId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return [
+      { id: 'p_1', stage: 'Introduction', title: 'The Archeological Dig', desc: 'Lekhaa uncovers the obsidian mask inside a submerged temple.' },
+      { id: 'p_2', stage: 'Conflict', title: 'The Siren\'s Echo', desc: 'The mask begins to hum, causing sleep deprivation and visual auditory ghosts.' },
+      { id: 'p_3', stage: 'Climax', title: 'The Descent into Obsidian', desc: 'Lekhaa dives alone into the deepest trench to place the mask back.' },
+      { id: 'p_4', stage: 'Twist', title: 'The Siren is Vance', desc: 'Lekhaa realizes she is the re-incarnation of the entity that forged it.' },
+      { id: 'p_5', stage: 'Resolution', title: 'The Eternal Hum', desc: 'The voice stops, but the ink in her journal permanently glows purple.' }
+    ];
+  });
   const [draggedPlotIndex, setDraggedPlotIndex] = useState(null);
 
   // Add Plot States
   const [isAddPlotOpen, setIsAddPlotOpen] = useState(false);
   const [newPlot, setNewPlot] = useState({ stage: 'Conflict', title: '', desc: '' });
+
+  // Edit Plot States
+  const [editingPlotId, setEditingPlotId] = useState(null);
+  const [editingPlotData, setEditingPlotData] = useState({ stage: 'Conflict', title: '', desc: '' });
 
   // Custom Character Categories State
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -101,10 +175,19 @@ export default function PlanningView() {
   const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
 
   // 8. Writing Suite States
-  const [chapters, setChapters] = useState([
-    { id: 'ch1', title: 'Chapter 1: The Singing Deep', content: 'The sea was a restless inkwell tonight. Dr. Lekhaa Vance stared into the dark obsidian waters, listening to the soft humming that vibrated through the deck. It was the same pitch as the sculpture sitting inside her trunk, wrapped in heavy velvet. The ocean spray felt needle-sharp, yet she could not force herself to go below deck.' },
-    { id: 'ch2', title: 'Chapter 2: The Whispered Ink', content: 'When the ink dried on the parchment, it formed symbols she had never learned. Yet, her calloused fingers continued to move across the mechanical keys, translating the deep-sea frequencies. "Return to the trench," the letters seemed to say, glowing with a faint purple bioluminescence in the dim cabin.' }
-  ]);
+  const [chapters, setChapters] = useState(() => {
+    const saved = localStorage.getItem(`oss_planning_chapters_${bookId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return [
+      { id: 'ch1', title: 'Chapter 1: The Singing Deep', content: 'The sea was a restless inkwell tonight. Dr. Lekhaa Vance stared into the dark obsidian waters, listening to the soft humming that vibrated through the deck. It was the same pitch as the sculpture sitting inside her trunk, wrapped in heavy velvet. The ocean spray felt needle-sharp, yet she could not force herself to go below deck.' },
+      { id: 'ch2', title: 'Chapter 2: The Whispered Ink', content: 'When the ink dried on the parchment, it formed symbols she had never learned. Yet, her calloused fingers continued to move across the mechanical keys, translating the deep-sea frequencies. "Return to the trench," the letters seemed to say, glowing with a faint purple bioluminescence in the dim cabin.' }
+    ];
+  });
   const [activeChapterId, setActiveChapterId] = useState('ch1');
   const [dailyGoal, setDailyGoal] = useState(500);
   const [chapterIllustrations, setChapterIllustrations] = useState({
@@ -115,8 +198,17 @@ export default function PlanningView() {
   const activeChapter = chapters.find(c => c.id === activeChapterId) || chapters[0];
 
   useEffect(() => {
+    localStorage.setItem(`oss_planning_characters_${bookId}`, JSON.stringify(characters));
+  }, [characters, bookId]);
+
+  useEffect(() => {
+    localStorage.setItem(`oss_planning_plots_${bookId}`, JSON.stringify(plots));
+  }, [plots, bookId]);
+
+  useEffect(() => {
+    localStorage.setItem(`oss_planning_chapters_${bookId}`, JSON.stringify(chapters));
     localStorage.setItem('oss_chapters', JSON.stringify(chapters));
-  }, [chapters]);
+  }, [chapters, bookId]);
 
   const handleChapterContentChange = (val) => {
     setChapters(chapters.map(c => c.id === activeChapterId ? { ...c, content: val } : c));
@@ -192,21 +284,73 @@ export default function PlanningView() {
     setDraggedPlotIndex(null);
   };
 
+  // Node layout dimensions
+  const nodeW = 110;
+  const nodeH = 36;
+
+  const getAnchorCoords = (nodeId, anchorName) => {
+    const pos = nodePositions[nodeId] || { x: 50, y: 50 };
+    switch (anchorName) {
+      case 'top':
+        return { x: pos.x + nodeW / 2, y: pos.y };
+      case 'bottom':
+        return { x: pos.x + nodeW / 2, y: pos.y + nodeH };
+      case 'left':
+        return { x: pos.x, y: pos.y + nodeH / 2 };
+      case 'right':
+        return { x: pos.x + nodeW, y: pos.y + nodeH / 2 };
+      default:
+        return { x: pos.x + nodeW / 2, y: pos.y + nodeH / 2 };
+    }
+  };
+
+  const getBezierPath = (p1, p2, anchor1, anchor2) => {
+    const dx = Math.abs(p1.x - p2.x) * 0.4;
+    const dy = Math.abs(p1.y - p2.y) * 0.4;
+    
+    let cp1x = p1.x;
+    let cp1y = p1.y;
+    let cp2x = p2.x;
+    let cp2y = p2.y;
+    
+    if (anchor1 === 'bottom') cp1y += dy;
+    else if (anchor1 === 'top') cp1y -= dy;
+    else if (anchor1 === 'left') cp1x -= dx;
+    else if (anchor1 === 'right') cp1x += dx;
+    
+    if (anchor2 === 'bottom') cp2y += dy;
+    else if (anchor2 === 'top') cp2y -= dy;
+    else if (anchor2 === 'left') cp2x -= dx;
+    else if (anchor2 === 'right') cp2x += dx;
+    
+    return `M ${p1.x} ${p1.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  };
+
   // Whiteboard Canvas Mouse Drag Handlers
   const handleWhiteboardMouseDown = (e, nodeId) => {
     if (!user) return;
     setDraggingNodeId(nodeId);
     const rect = whiteboardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left - nodePositions[nodeId].x;
-    const y = e.clientY - rect.top - nodePositions[nodeId].y;
+    const x = e.clientX - rect.left - (nodePositions[nodeId]?.x || 0);
+    const y = e.clientY - rect.top - (nodePositions[nodeId]?.y || 0);
     setDragOffset({ x, y });
   };
 
   const handleWhiteboardMouseMove = (e) => {
-    if (draggingNodeId === null) return;
     const rect = whiteboardRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(rect.width - 150, e.clientX - rect.left - dragOffset.x));
-    const y = Math.max(0, Math.min(rect.height - 80, e.clientY - rect.top - dragOffset.y));
+    
+    // Draw Connection line in real-time
+    if (drawingFromNodeId !== null) {
+      setCurrentMousePos({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+      return;
+    }
+
+    if (draggingNodeId === null) return;
+    const x = Math.max(0, Math.min(rect.width - nodeW, e.clientX - rect.left - dragOffset.x));
+    const y = Math.max(0, Math.min(rect.height - nodeH, e.clientY - rect.top - dragOffset.y));
     setNodePositions({
       ...nodePositions,
       [draggingNodeId]: { x, y }
@@ -215,6 +359,93 @@ export default function PlanningView() {
 
   const handleWhiteboardMouseUp = () => {
     setDraggingNodeId(null);
+    setDrawingFromNodeId(null);
+    setDrawingFromAnchor('');
+  };
+
+  const startDrawingConnection = (e, charId, anchor) => {
+    e.stopPropagation();
+    if (!user) return;
+    setDrawingFromNodeId(charId);
+    setDrawingFromAnchor(anchor);
+    const rect = whiteboardRef.current.getBoundingClientRect();
+    setCurrentMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  const handleAnchorMouseUp = (e, targetCharId, targetAnchor) => {
+    e.stopPropagation();
+    if (drawingFromNodeId && drawingFromNodeId !== targetCharId) {
+      const label = window.prompt("Enter relationship label (e.g. Mentor, Rival, Friend):", "Connected");
+      if (label !== null) {
+        setConnections([
+          ...connections,
+          {
+            from: drawingFromNodeId,
+            to: targetCharId,
+            fromAnchor: drawingFromAnchor,
+            toAnchor: targetAnchor,
+            label: label.trim() || 'Connected'
+          }
+        ]);
+      }
+    }
+    setDrawingFromNodeId(null);
+    setDrawingFromAnchor('');
+  };
+
+  const handleNodeMouseUp = (targetCharId) => {
+    if (drawingFromNodeId && drawingFromNodeId !== targetCharId) {
+      const label = window.prompt("Enter relationship label (e.g. Mentor, Rival, Friend):", "Connected");
+      if (label !== null) {
+        setConnections([
+          ...connections,
+          {
+            from: drawingFromNodeId,
+            to: targetCharId,
+            fromAnchor: drawingFromAnchor,
+            toAnchor: 'top',
+            label: label.trim() || 'Connected'
+          }
+        ]);
+      }
+    }
+    setDraggingNodeId(null);
+    setDrawingFromNodeId(null);
+    setDrawingFromAnchor('');
+  };
+
+  const saveRename = (charId) => {
+    if (renamingNameVal.trim()) {
+      setCharacters(characters.map(c => c.id === charId ? { ...c, name: renamingNameVal.trim() } : c));
+    }
+    setRenamingCharId(null);
+  };
+
+  const handleWhiteboardAddCharacter = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const name = window.prompt("Enter character node name:", "New Character");
+    if (!name) return;
+    const id = Date.now().toString();
+    const newCharObj = {
+      id,
+      name: name.trim(),
+      role: 'Supporting',
+      species: 'Human',
+      backstory: '',
+      traits: '',
+      customFields: []
+    };
+    setCharacters([...characters, newCharObj]);
+    setNodePositions({
+      ...nodePositions,
+      [id]: { x: 300 + Math.random() * 50, y: 150 + Math.random() * 50 }
+    });
   };
 
   // Add character helper
@@ -493,6 +724,7 @@ export default function PlanningView() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setCharacters(characters.filter(c => c.id !== char.id));
+                              setConnections(connections.filter(conn => conn.from !== char.id && conn.to !== char.id));
                               if (activeCharId === char.id) {
                                 const remaining = characters.filter(c => c.id !== char.id);
                                 setActiveCharId(remaining[0].id);
@@ -1299,48 +1531,32 @@ export default function PlanningView() {
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h3 className="text-xl font-serif text-white flex items-center gap-2">
-                  <Network className="w-5 h-5 text-purple-400" /> Character Relationship Canvas
-                </h3>
-                <p className="text-xs font-mono text-slate-400 tracking-wide mt-0.5">WHITEBOARD CONSPIRACY BOARD — DRAG NODES AND GRAPH CONNECTIONS</p>
+                <p className="text-sm text-slate-400 font-light leading-relaxed">
+                  Drag handles to draw relationships. Double-click a node label to rename.
+                </p>
               </div>
 
-              {/* Add Connection Selector Panel */}
-              <form onSubmit={addConnection} className="flex flex-wrap gap-2 items-center bg-slate-900/40 border border-slate-800 p-2 rounded-xl">
-                <select
-                  value={newConn.from}
-                  onChange={e => setNewConn({...newConn, from: e.target.value})}
-                  className="bg-slate-950 text-xs border border-slate-800 p-1.5 rounded focus:outline-none text-slate-300"
+              {/* Action Toolbar buttons */}
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleWhiteboardAddCharacter}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-855 border border-slate-800 rounded-xl text-xs font-mono text-slate-350 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 font-bold"
                 >
-                  <option value="">Source Node...</option>
-                  {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                
-                <span className="text-xs text-slate-600">→</span>
-                
-                <input 
-                  type="text" 
-                  placeholder="Rel. (e.g. Rival)..." 
-                  value={newConn.label}
-                  onChange={e => setNewConn({...newConn, label: e.target.value})}
-                  className="bg-slate-950 text-xs border border-slate-800 p-1.5 rounded focus:outline-none text-slate-300 w-28"
-                />
-
-                <span className="text-xs text-slate-600">→</span>
-
-                <select
-                  value={newConn.to}
-                  onChange={e => setNewConn({...newConn, to: e.target.value})}
-                  className="bg-slate-950 text-xs border border-slate-800 p-1.5 rounded focus:outline-none text-slate-300"
-                >
-                  <option value="">Target Node...</option>
-                  {characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-
-                <button type="submit" className="p-1.5 rounded bg-purple-900/40 border border-purple-700/50 hover:bg-purple-900/60 text-purple-300 hover:text-white cursor-pointer transition-all">
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3.5 h-3.5" /> Character
                 </button>
-              </form>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to clear the whiteboard canvas?")) {
+                      setConnections([]);
+                    }
+                  }}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-855 border border-slate-800 rounded-xl text-xs font-mono text-slate-355 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 font-bold"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Clear
+                </button>
+              </div>
             </div>
 
             {/* Whiteboard Interactive Zone */}
@@ -1349,7 +1565,7 @@ export default function PlanningView() {
               onMouseMove={handleWhiteboardMouseMove}
               onMouseLeave={handleWhiteboardMouseUp}
               onMouseUp={handleWhiteboardMouseUp}
-              className="relative h-[400px] w-full bg-[#08090d] border border-slate-800/80 rounded-2xl overflow-hidden cursor-crosshair shadow-inner"
+              className="relative h-[400px] w-full bg-[#08090d] border border-slate-800/80 rounded-2xl overflow-hidden shadow-inner"
               style={{
                 backgroundImage: 'radial-gradient(rgba(139, 92, 246, 0.05) 1.5px, transparent 1.5px)',
                 backgroundSize: '24px 24px'
@@ -1358,71 +1574,226 @@ export default function PlanningView() {
               {/* Render SVG connection arrows */}
               <svg className="absolute inset-0 pointer-events-none w-full h-full">
                 <defs>
-                  <marker id="arrow" viewBox="0 0 10 10" refX="15" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <marker id="arrow" viewBox="0 0 10 10" refX="12" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M0,0 L10,5 L0,10 z" fill="#a855f7" />
                   </marker>
                 </defs>
 
                 {connections.map((conn, idx) => {
+                  const fromCharExists = characters.some(c => c.id === conn.from);
+                  const toCharExists = characters.some(c => c.id === conn.to);
+                  if (!fromCharExists || !toCharExists) return null;
+
                   const fromPos = nodePositions[conn.from];
                   const toPos = nodePositions[conn.to];
                   if (!fromPos || !toPos) return null;
 
-                  // Center coordinates
-                  const x1 = fromPos.x + 75;
-                  const y1 = fromPos.y + 40;
-                  const x2 = toPos.x + 75;
-                  const y2 = toPos.y + 40;
+                  // Anchor coordinates
+                  const p1 = conn.fromAnchor 
+                    ? getAnchorCoords(conn.from, conn.fromAnchor) 
+                    : { x: fromPos.x + 55, y: fromPos.y + 18 };
+                  const p2 = conn.toAnchor 
+                    ? getAnchorCoords(conn.to, conn.toAnchor) 
+                    : { x: toPos.x + 55, y: toPos.y + 18 };
 
-                  // Text position (midpoint)
-                  const midX = (x1 + x2) / 2;
-                  const midY = (y1 + y2) / 2 - 10;
+                  // Bezier curve path string
+                  const pathStr = getBezierPath(p1, p2, conn.fromAnchor || 'bottom', conn.toAnchor || 'top');
+
+                  // Text label coordinates at mid-curve
+                  const midX = (p1.x + p2.x) / 2;
+                  const midY = (p1.y + p2.y) / 2;
+
+                  const labelText = conn.label || 'Connected';
+                  const charCount = labelText.length;
+                  const badgeWidth = Math.max(75, charCount * 6.5 + 24);
+                  const badgeHeight = 18;
+                  const rx = badgeHeight / 2;
+
+                  const rectX = midX - badgeWidth / 2;
+                  const rectY = midY - badgeHeight / 2;
+                  const deleteCenterX = rectX + badgeWidth - 10;
+                  const deleteCenterY = rectY + badgeHeight / 2;
 
                   return (
                     <g key={idx}>
-                      <line 
-                        x1={x1} y1={y1} x2={x2} y2={y2} 
-                        stroke="rgba(168, 85, 247, 0.4)" 
+                      <path 
+                        d={pathStr} 
+                        stroke="rgba(168, 85, 247, 0.6)" 
                         strokeWidth="1.5" 
                         strokeDasharray="4 4"
+                        fill="none"
                         markerEnd="url(#arrow)" 
                       />
-                      <rect x={midX - 45} y={midY - 8} width="90" height="16" fill="#0c0d12" rx="4" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                      <text 
-                        x={midX} y={midY + 3} 
-                        fill="#c084fc" 
-                        fontSize="11" 
-                        fontFamily="monospace"
-                        textAnchor="middle" 
-                        className="uppercase tracking-wider font-semibold"
+                      
+                      {/* Pill backdrop */}
+                      <rect 
+                        x={rectX} 
+                        y={rectY} 
+                        width={badgeWidth} 
+                        height={badgeHeight} 
+                        rx={rx} 
+                        fill="#08090d" 
+                        stroke="rgba(168, 85, 247, 0.4)" 
+                        strokeWidth="1" 
+                        className="shadow-md"
+                      />
+
+                      {/* Interactive Rename Zone */}
+                      <g 
+                        className="pointer-events-auto cursor-pointer group/rename"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const newLabel = window.prompt("Edit relationship label:", labelText);
+                          if (newLabel !== null) {
+                            setConnections(connections.map((c, i) => i === idx ? { ...c, label: newLabel.trim() || 'Connected' } : c));
+                          }
+                        }}
                       >
-                        {conn.label}
-                      </text>
+                        <rect 
+                          x={rectX} 
+                          y={rectY} 
+                          width={badgeWidth - 18} 
+                          height={badgeHeight} 
+                          rx={rx} 
+                          fill="transparent" 
+                        />
+                        <text 
+                          x={rectX + (badgeWidth - 18) / 2 + 1} 
+                          y={rectY + badgeHeight / 2 + 3} 
+                          fill="#c084fc" 
+                          fontSize="8" 
+                          fontFamily="monospace"
+                          textAnchor="middle" 
+                          className="uppercase tracking-wider font-semibold select-none group-hover/rename:fill-purple-300 transition-colors"
+                        >
+                          {labelText}
+                        </text>
+                      </g>
+
+                      {/* Interactive Delete Zone */}
+                      <g 
+                        className="pointer-events-auto cursor-pointer group/del"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Delete the relationship "${labelText}"?`)) {
+                            setConnections(connections.filter((_, i) => i !== idx));
+                          }
+                        }}
+                      >
+                        <rect 
+                          x={rectX + badgeWidth - 18} 
+                          y={rectY} 
+                          width={18} 
+                          height={badgeHeight} 
+                          rx={rx} 
+                          fill="transparent" 
+                        />
+                        <circle 
+                          cx={deleteCenterX} 
+                          cy={deleteCenterY} 
+                          r="5.5" 
+                          fill="rgba(239, 68, 68, 0.15)" 
+                          stroke="rgba(239, 68, 68, 0.3)" 
+                          strokeWidth="0.5" 
+                          className="group-hover/del:fill-red-500 group-hover/del:stroke-red-400 transition-all" 
+                        />
+                        <text 
+                          x={deleteCenterX} 
+                          y={deleteCenterY + 2.5} 
+                          fill="#ef4444" 
+                          fontSize="8" 
+                          textAnchor="middle" 
+                          className="font-bold select-none group-hover/del:fill-white transition-colors"
+                        >
+                          ×
+                        </text>
+                      </g>
                     </g>
                   );
                 })}
+
+                {/* Render active dragging line in real-time */}
+                {drawingFromNodeId && (() => {
+                  const p1 = getAnchorCoords(drawingFromNodeId, drawingFromAnchor);
+                  const p2 = currentMousePos;
+                  const pathStr = getBezierPath(p1, p2, drawingFromAnchor, 'top');
+                  return (
+                    <path 
+                      d={pathStr}
+                      stroke="rgba(168, 85, 247, 0.8)" 
+                      strokeWidth="1.5" 
+                      strokeDasharray="4 4"
+                      fill="none"
+                    />
+                  );
+                })()}
               </svg>
 
-              {/* Render draggable character nodes */}
+              {/* Render draggable rounded-full character nodes exactly matching mockups */}
               {characters.map(char => {
                 const pos = nodePositions[char.id] || { x: 50, y: 50 };
+                const isDragging = draggingNodeId === char.id;
                 return (
                   <div
                     key={char.id}
                     onMouseDown={(e) => handleWhiteboardMouseDown(e, char.id)}
-                    className={`absolute w-36 h-20 bg-slate-900/90 border border-slate-800/80 rounded-xl p-3 shadow-lg select-none cursor-grab flex flex-col justify-between transition-colors ${
-                      draggingNodeId === char.id ? 'border-purple-500/50 cursor-grabbing bg-slate-900 shadow-2xl' : 'hover:border-slate-700/80'
+                    onMouseUp={() => handleNodeMouseUp(char.id)}
+                    onDoubleClick={() => {
+                      setRenamingCharId(char.id);
+                      setRenamingNameVal(char.name);
+                    }}
+                    className={`absolute rounded-full border bg-[#0d0a15]/95 px-5 py-2 flex items-center justify-center min-w-[110px] h-[36px] shadow-lg select-none transition-colors ${
+                      isDragging 
+                        ? 'border-purple-500 shadow-purple-500/10 cursor-grabbing' 
+                        : 'border-slate-800 hover:border-purple-500/40 hover:bg-[#120f24]/80 cursor-grab'
                     }`}
                     style={{ left: pos.x, top: pos.y }}
                   >
-                    <div>
-                      <h4 className="font-serif text-slate-100 text-xs font-semibold truncate">{char.name}</h4>
-                      <p className="text-xs font-mono text-purple-400 truncate uppercase mt-0.5">{char.role}</p>
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] font-mono text-slate-500 border-t border-slate-800 pt-1">
-                      <span>{char.species}</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                    </div>
+                    {renamingCharId === char.id ? (
+                      <input
+                        type="text"
+                        value={renamingNameVal}
+                        onChange={e => setRenamingNameVal(e.target.value)}
+                        onBlur={() => saveRename(char.id)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveRename(char.id);
+                          if (e.key === 'Escape') setRenamingCharId(null);
+                        }}
+                        className="bg-transparent text-slate-100 text-xs font-sans font-semibold text-center focus:outline-none w-20 border-b border-purple-500"
+                        autoFocus
+                        onMouseDown={e => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span className="text-slate-200 font-sans text-xs font-medium tracking-wide">
+                        {char.name}
+                      </span>
+                    )}
+
+                    {/* Drag anchors handles (top, right, bottom, left) */}
+                    <div 
+                      onMouseDown={(e) => startDrawingConnection(e, char.id, 'top')}
+                      onMouseUp={(e) => handleAnchorMouseUp(e, char.id, 'top')}
+                      className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-purple-500/70 hover:bg-purple-400 hover:scale-125 cursor-crosshair transition-all" 
+                      title="Drag to connect"
+                    />
+                    <div 
+                      onMouseDown={(e) => startDrawingConnection(e, char.id, 'right')}
+                      onMouseUp={(e) => handleAnchorMouseUp(e, char.id, 'right')}
+                      className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-purple-500/70 hover:bg-purple-400 hover:scale-125 cursor-crosshair transition-all" 
+                      title="Drag to connect"
+                    />
+                    <div 
+                      onMouseDown={(e) => startDrawingConnection(e, char.id, 'bottom')}
+                      onMouseUp={(e) => handleAnchorMouseUp(e, char.id, 'bottom')}
+                      className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1.5 h-1.5 rounded-full bg-purple-500/70 hover:bg-purple-400 hover:scale-125 cursor-crosshair transition-all" 
+                      title="Drag to connect"
+                    />
+                    <div 
+                      onMouseDown={(e) => startDrawingConnection(e, char.id, 'left')}
+                      onMouseUp={(e) => handleAnchorMouseUp(e, char.id, 'left')}
+                      className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-purple-500/70 hover:bg-purple-400 hover:scale-125 cursor-crosshair transition-all" 
+                      title="Drag to connect"
+                    />
                   </div>
                 );
               })}
@@ -1434,73 +1805,85 @@ export default function PlanningView() {
             TAB: WORLD BUILDING LAB
             ========================================================================== */}
         {activeTab === 'world' && (
-          <div className="p-6 space-y-6 relative max-h-[500px] overflow-y-auto">
+          <div className="p-6 space-y-8 relative max-h-[500px] overflow-y-auto pr-2">
             {!user && <AuthOverlay message="Sign in to save and modify world building blueprints." />}
             
-            <div>
-              <h3 className="text-xl font-serif text-white flex items-center gap-2">
-                <Globe className="w-5 h-5 text-purple-400" /> World Building Lab
-              </h3>
-              <p className="text-xs font-mono text-slate-400 tracking-wide mt-0.5">CHRONICLING THE MATRIX, ARCHITECTURES, AND LAWS OF UNIVERSE</p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-slate-500 uppercase tracking-wider block">Time Period & Technology Stage</label>
-                  <input 
-                    type="text" 
-                    value={worldData.timePeriod}
-                    onChange={e => setWorldData({...worldData, timePeriod: e.target.value})}
-                    className="w-full bg-slate-900/40 border border-slate-800 p-3 rounded-xl text-sm text-slate-300 font-serif focus:outline-none focus:border-purple-500/25"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-slate-500 uppercase tracking-wider block">Geography & Layout Boundaries</label>
-                  <textarea 
-                    value={worldData.geography}
-                    onChange={e => setWorldData({...worldData, geography: e.target.value})}
-                    className="w-full bg-slate-900/40 border border-slate-800 p-3 rounded-xl text-sm text-slate-300 font-serif leading-relaxed focus:outline-none focus:border-purple-500/25 h-20 resize-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-slate-500 uppercase tracking-wider block">Culture, Species & Society Habits</label>
-                  <textarea 
-                    value={worldData.culture}
-                    onChange={e => setWorldData({...worldData, culture: e.target.value})}
-                    className="w-full bg-slate-900/40 border border-slate-800 p-3 rounded-xl text-sm text-slate-300 font-serif leading-relaxed focus:outline-none focus:border-purple-500/25 h-20 resize-none"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-slate-500 uppercase tracking-wider block">Politics & Syndicate Power Structures</label>
-                  <textarea 
-                    value={worldData.politics}
-                    onChange={e => setWorldData({...worldData, politics: e.target.value})}
-                    className="w-full bg-[#0d0a15]/30 border border-slate-800 p-3 rounded-xl text-sm text-slate-300 font-serif leading-relaxed focus:outline-none focus:border-purple-500/25 h-20 resize-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-slate-500 uppercase tracking-wider block">Magic Rules or Sonic Technology Thresholds</label>
-                  <input 
-                    type="text" 
-                    value={worldData.magicRules}
-                    onChange={e => setWorldData({...worldData, magicRules: e.target.value})}
-                    className="w-full bg-slate-900/40 border border-slate-800 p-3 rounded-xl text-sm text-slate-300 font-serif focus:outline-none focus:border-purple-500/25"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-slate-500 uppercase tracking-wider block">Cosmology Myths & Deep Lore Beliefs</label>
-                  <textarea 
-                    value={worldData.beliefs}
-                    onChange={e => setWorldData({...worldData, beliefs: e.target.value})}
-                    className="w-full bg-[#0d0a15]/30 border border-slate-800 p-3 rounded-xl text-sm text-slate-300 font-serif leading-relaxed focus:outline-none focus:border-purple-500/25 h-20 resize-none"
-                  />
-                </div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 className="text-xl font-serif text-white flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-purple-400" /> World Building Lab
+                </h3>
+                <p className="text-xs font-mono text-slate-400 tracking-wide mt-0.5 uppercase">CHRONICLING THE MATRIX, ARCHITECTURES, AND LAWS OF YOUR UNIVERSE</p>
               </div>
             </div>
+
+            {/* Dynamic Category Card Grid matching the mockups exactly */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {worldCategories.map((category) => {
+                const isCustom = category.id.startsWith('custom_');
+                return (
+                  <div key={category.id} className="bg-[#0b0c10]/40 border border-slate-800 rounded-2xl p-5 space-y-3.5 relative">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-serif font-medium text-slate-100">{category.title}</h4>
+                      {isCustom && user && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWorldCategories(worldCategories.filter(c => c.id !== category.id));
+                          }}
+                          className="text-slate-650 hover:text-red-400 cursor-pointer p-1 transition-colors border-none bg-transparent"
+                          title="Remove custom category"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <textarea 
+                      value={category.value}
+                      placeholder={category.placeholder}
+                      disabled={!user}
+                      onChange={e => {
+                        setWorldCategories(worldCategories.map(c => c.id === category.id ? { ...c, value: e.target.value } : c));
+                      }}
+                      className="w-full bg-[#050608]/90 border border-[#0f121d] focus:border-purple-950/60 rounded-xl p-3.5 text-xs sm:text-sm text-slate-300 focus:outline-none placeholder-slate-650 h-28 resize-none font-sans leading-relaxed"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add Custom Category Form Bar at the very bottom */}
+            {user && (
+              <div className="bg-[#0d091b]/10 border border-dashed border-purple-900/40 p-5 rounded-2xl space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-center">
+                  <input 
+                    type="text" 
+                    placeholder="Custom category name..."
+                    value={newWorldCategoryName}
+                    onChange={e => setNewWorldCategoryName(e.target.value)}
+                    className="w-full sm:w-80 bg-slate-950 border border-slate-850 focus:border-purple-500/30 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none placeholder-slate-600 font-mono"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (!newWorldCategoryName.trim()) return;
+                      const title = newWorldCategoryName.trim();
+                      const newCat = {
+                        id: `custom_${Date.now()}`,
+                        title,
+                        placeholder: `Describe the ${title.toLowerCase()} of your world...`,
+                        value: ''
+                      };
+                      setWorldCategories([...worldCategories, newCat]);
+                      setNewWorldCategoryName('');
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-xs font-mono font-bold text-slate-300 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" /> Add Custom Category
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1662,41 +2045,113 @@ export default function PlanningView() {
 
             {/* Draggable Plot Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 pt-4">
-              {plots.map((plot, idx) => (
-                <div
-                  key={plot.id}
-                  draggable={user ? "true" : "false"}
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDragEnd={handleDragEnd}
-                  className={`bg-[#0d0a15]/80 border rounded-2xl p-4 min-h-[160px] flex flex-col justify-between cursor-grab active:cursor-grabbing transition-all ${
-                    draggedPlotIndex === idx 
-                      ? 'border-purple-500 bg-purple-950/30 scale-95 shadow-2xl opacity-50' 
-                      : 'border-slate-800/80 hover:border-purple-500/30 hover:bg-[#120f1f]/50'
-                  }`}
-                >
-                  <div className="space-y-2">
-                    <span className="text-xs font-mono text-purple-400 font-bold uppercase tracking-wider block bg-purple-950/20 border border-purple-900/30 w-max px-2 py-0.5 rounded">
-                      {plot.stage}
-                    </span>
-                    <h4 className="font-serif font-medium text-slate-100 text-sm">{plot.title}</h4>
-                    <p className="text-xs text-slate-400 leading-normal font-light">{plot.desc}</p>
+              {plots.map((plot, idx) => {
+                const isEditing = editingPlotId === plot.id;
+                return (
+                  <div
+                    key={plot.id}
+                    draggable={isEditing ? "false" : (user ? "true" : "false")}
+                    onDragStart={isEditing ? undefined : () => handleDragStart(idx)}
+                    onDragOver={isEditing ? undefined : (e) => handleDragOver(e, idx)}
+                    onDragEnd={isEditing ? undefined : handleDragEnd}
+                    className={`bg-[#0d0a15]/80 border rounded-2xl p-4 min-h-[180px] flex flex-col justify-between transition-all ${
+                      isEditing
+                        ? 'border-purple-500 bg-[#120f1f]'
+                        : draggedPlotIndex === idx 
+                        ? 'border-purple-500 bg-purple-950/30 scale-95 shadow-2xl opacity-50' 
+                        : 'border-slate-800/80 hover:border-purple-500/30 hover:bg-[#120f1f]/50'
+                    } ${!isEditing && user ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  >
+                    {isEditing ? (
+                      <div className="space-y-2.5 w-full flex-1 flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <select
+                            value={editingPlotData.stage}
+                            onChange={e => setEditingPlotData({ ...editingPlotData, stage: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 p-1.5 rounded-lg text-[10px] font-mono font-bold text-purple-400 uppercase focus:outline-none focus:border-purple-500 cursor-pointer"
+                          >
+                            <option>Introduction</option>
+                            <option>Conflict</option>
+                            <option>Climax</option>
+                            <option>Twist</option>
+                            <option>Resolution</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={editingPlotData.title}
+                            onChange={e => setEditingPlotData({ ...editingPlotData, title: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 px-2 py-1 rounded-lg text-xs font-serif text-slate-100 focus:outline-none focus:border-purple-500"
+                            placeholder="Plot Title"
+                          />
+                          <textarea
+                            value={editingPlotData.desc}
+                            onChange={e => setEditingPlotData({ ...editingPlotData, desc: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 px-2 py-1 rounded-lg text-xs font-light text-slate-350 focus:outline-none focus:border-purple-500 h-20 resize-none font-sans leading-normal"
+                            placeholder="Plot Description"
+                          />
+                        </div>
+                        <div className="border-t border-slate-900/60 pt-2 flex justify-end gap-1.5 text-[10px] font-mono">
+                          <button
+                            type="button"
+                            onClick={() => setEditingPlotId(null)}
+                            className="px-2 py-1 bg-slate-900 hover:bg-slate-855 text-slate-400 rounded-md cursor-pointer transition-colors border-none"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPlots(plots.map(p => p.id === plot.id ? { ...p, ...editingPlotData } : p));
+                              setEditingPlotId(null);
+                            }}
+                            className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-md cursor-pointer transition-colors font-bold border-none"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <span className="text-xs font-mono text-purple-400 font-bold uppercase tracking-wider block bg-purple-950/20 border border-purple-900/30 w-max px-2 py-0.5 rounded">
+                            {plot.stage}
+                          </span>
+                          <h4 className="font-serif font-medium text-slate-100 text-sm">{plot.title}</h4>
+                          <p className="text-xs text-slate-400 leading-normal font-light">{plot.desc}</p>
+                        </div>
+                        <div className="border-t border-slate-900/60 pt-2 flex justify-between items-center text-xs font-mono text-slate-500">
+                          <span>Index 0{idx + 1}</span>
+                          <div className="flex items-center gap-1.5">
+                            {user && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingPlotId(plot.id);
+                                  setEditingPlotData({ stage: plot.stage, title: plot.title, desc: plot.desc });
+                                }}
+                                className="text-slate-600 hover:text-purple-400 cursor-pointer p-0.5 transition-colors border-none bg-transparent"
+                                title="Edit plot point"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPlots(plots.filter(p => p.id !== plot.id));
+                              }}
+                              className="text-slate-600 hover:text-red-400 cursor-pointer p-0.5 transition-colors border-none bg-transparent"
+                              title="Delete plot point"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="border-t border-slate-900/60 pt-2 flex justify-between items-center text-xs font-mono text-slate-500">
-                    <span>Index 0{idx + 1}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPlots(plots.filter(p => p.id !== plot.id));
-                      }}
-                      className="text-slate-600 hover:text-red-400 cursor-pointer p-0.5 transition-colors"
-                      title="Delete plot point"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Add Plot Point Card as last grid item */}
               {user && (

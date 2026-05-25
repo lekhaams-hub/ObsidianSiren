@@ -27,14 +27,14 @@ const GENRE_PRESETS = [
     subtitle: 'The Dossier',
     font: 'Montserrat',
     fontFamily: '"Montserrat", sans-serif',
-    bgColor: 'bg-[#0c0714]',
-    textColor: 'text-[#ece6f3]',
+    bgColor: 'bg-[#ffffff]',
+    textColor: 'text-[#0f172a]',
     spacing: 'leading-snug',
-    desc: 'Montserrat • Dark mode • All-caps • Tight 1.2',
+    desc: 'Montserrat • Clean white • All-caps • Tight 1.2',
     safetyMargin: '12px',
-    details: 'Sans-serif all-caps headers, tight tracking',
-    accentColor: 'text-purple-400',
-    borderStyle: 'border-purple-900/20'
+    details: 'Sans-serif all-caps headers, tight tracking, bright print',
+    accentColor: 'text-[#6b21a8]',
+    borderStyle: 'border-slate-200'
   },
   {
     id: 'poetry',
@@ -72,14 +72,14 @@ const GENRE_PRESETS = [
     subtitle: 'The Nocturne',
     font: 'Crimson Text',
     fontFamily: 'ui-serif, Georgia, serif',
-    bgColor: 'bg-[#150d1a]',
-    textColor: 'text-[#f0e9f4]',
+    bgColor: 'bg-[#FFFBFB]',
+    textColor: 'text-[#2e151b]',
     spacing: 'leading-relaxed',
-    desc: 'Crimson Text • Plum dark • Script titles • 1.6 line',
+    desc: 'Crimson Text • Warm cream • Script titles • 1.6 line',
     safetyMargin: '18px',
-    details: 'Deep rose tint, script headers, romantic spacing',
-    accentColor: 'text-rose-400',
-    borderStyle: 'border-[#301c3d]'
+    details: 'Soft rose tint, script headers, romantic spacing',
+    accentColor: 'text-[#be185d]',
+    borderStyle: 'border-[#fce7f3]'
   },
   {
     id: 'academic',
@@ -111,7 +111,7 @@ const GLOSSARY_DATA = [
   { id: 'folio', term: 'Folio', def: 'The technical term for page numbers printed at either the top or bottom of pages.' }
 ];
 
-export default function FormattingView() {
+export default function FormattingView({ bookId = 'default_book' }) {
   const { user, setIsAuthModalOpen } = useAuth();
   
   // Custom states
@@ -146,7 +146,7 @@ export default function FormattingView() {
   // Helper to load Scriptorium chapters from local storage
   const loadWritingSuiteChapters = () => {
     try {
-      const stored = localStorage.getItem('oss_chapters');
+      const stored = localStorage.getItem(`oss_planning_chapters_${bookId}`) || localStorage.getItem('oss_chapters');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && parsed.length > 0) {
@@ -172,7 +172,7 @@ export default function FormattingView() {
       setSelectedChapterId(chapters[0].id);
       setManuscriptText(`${chapters[0].title}\n\n${chapters[0].content}`);
     }
-  }, []);
+  }, [bookId]);
 
   // Load from Scriptorium
   const handleImportFromWritingSuite = () => {

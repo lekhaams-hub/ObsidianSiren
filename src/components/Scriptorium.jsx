@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, BookOpen, Compass, Feather, FileText, Palette, 
   MessageSquare, Library, HelpCircle, Settings as SettingsIcon, LogOut, Lock,
@@ -19,6 +19,52 @@ export default function Scriptorium({ onBack }) {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'planning', 'formatting', 'studio', 'sanctuary'
   const [currency, setCurrency] = useState('USD'); // 'USD' or 'INR'
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Multi-book state tracking
+  const [books, setBooks] = useState(() => {
+    const saved = localStorage.getItem('oss_books');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      { id: 'default_book', title: 'The Obsidian Siren', created: new Date().toLocaleDateString() }
+    ];
+  });
+
+  const [activeBookId, setActiveBookId] = useState(() => {
+    return localStorage.getItem('oss_active_book_id') || 'default_book';
+  });
+
+  const [isCreateBookModalOpen, setIsCreateBookModalOpen] = useState(false);
+  const [newBookTitleInput, setNewBookTitleInput] = useState('');
+
+  // Sync state to localStorage
+  useEffect(() => {
+    localStorage.setItem('oss_books', JSON.stringify(books));
+  }, [books]);
+
+  useEffect(() => {
+    localStorage.setItem('oss_active_book_id', activeBookId);
+  }, [activeBookId]);
+
+  const submitCreateNewBook = (e) => {
+    e.preventDefault();
+    if (!newBookTitleInput.trim()) return;
+    const newBook = {
+      id: `book_${Date.now()}`,
+      title: newBookTitleInput.trim(),
+      created: new Date().toLocaleDateString()
+    };
+    setBooks([...books, newBook]);
+    setActiveBookId(newBook.id);
+    setNewBookTitleInput('');
+    setIsCreateBookModalOpen(false);
+  };
 
   // Standard static profile initials
   const initials = user && user.email ? user.email.slice(0, 2).toUpperCase() : 'W';
@@ -52,6 +98,30 @@ export default function Scriptorium({ onBack }) {
               <h1 className="font-serif font-bold text-lg text-white leading-tight">Obsidian</h1>
               <p className="text-[10px] font-mono text-purple-400 uppercase tracking-widest leading-none mt-0.5">Siren Studio</p>
             </div>
+          </div>
+
+          {/* Active Book Switcher */}
+          <div className="p-4 border-b border-slate-900/60 space-y-2">
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[11px] font-mono text-slate-500 uppercase tracking-widest">Active Project</span>
+              {user && (
+                <button 
+                  onClick={() => setIsCreateBookModalOpen(true)}
+                  className="text-[13px] font-mono text-purple-400 hover:text-purple-350 flex items-center gap-0.5 cursor-pointer font-bold border-none bg-transparent transition-colors"
+                >
+                  + New Book
+                </button>
+              )}
+            </div>
+            <select
+              value={activeBookId}
+              onChange={e => setActiveBookId(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-850 p-2 rounded-xl text-xs font-mono text-slate-350 focus:outline-none focus:border-purple-500/30 cursor-pointer"
+            >
+              {books.map(b => (
+                <option key={b.id} value={b.id}>{b.title}</option>
+              ))}
+            </select>
           </div>
 
           {/* Mode Switcher */}
@@ -303,15 +373,15 @@ export default function Scriptorium({ onBack }) {
           )}
 
           {activeTab === 'planning' && (
-            <PlanningView />
+            <PlanningView key={activeBookId} bookId={activeBookId} />
           )}
 
           {activeTab === 'formatting' && (
-            <FormattingView />
+            <FormattingView key={activeBookId} bookId={activeBookId} />
           )}
 
           {activeTab === 'studio' && (
-            <CoverView />
+            <CoverView key={activeBookId} bookId={activeBookId} />
           )}
 
           {activeTab === 'sanctuary' && (
@@ -344,6 +414,54 @@ export default function Scriptorium({ onBack }) {
           )}
         </main>
       </div>
+
+      {/* Glassmorphic Create New Book Modal */}
+      {isCreateBookModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-md p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-lg font-serif text-white font-medium">Start a New Book</h3>
+              <button 
+                onClick={() => setIsCreateBookModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xl border-none bg-transparent"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={submitCreateNewBook} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono text-slate-500 uppercase block">Book Title</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Echoes of the Abyss..." 
+                  value={newBookTitleInput}
+                  onChange={e => setNewBookTitleInput(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-200 text-sm"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/60">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateBookModalOpen(false)}
+                  className="px-4 py-2 bg-slate-950 hover:bg-slate-900 border border-slate-850 text-slate-400 hover:text-slate-200 font-mono text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-mono text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-purple-900/10 border-none"
+                >
+                  Create Book
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

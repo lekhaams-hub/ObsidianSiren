@@ -17,6 +17,12 @@ export default function CoverView() {
   const [generating, setGenerating] = useState(false);
   const [aiResult, setAiResult] = useState('');
 
+  // Prompt limit state
+  const [aiPromptsCount, setAiPromptsCount] = useState(() => {
+    const saved = localStorage.getItem('oss_cover_ai_prompts_count');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
   // Canva-Lite Digital Studio Canvas States
   const [bgImage, setBgImage] = useState('https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500&q=80');
   const [bgScale, setBgScale] = useState(1.0);
@@ -100,6 +106,9 @@ export default function CoverView() {
       setIsAuthModalOpen(true);
       return;
     }
+    if (aiPromptsCount >= 5) {
+      return;
+    }
     setGenerating(true);
     setAiResult('');
     setTimeout(() => {
@@ -109,6 +118,12 @@ export default function CoverView() {
       setAiResult(randomImg);
       // Immediately push to background canvas of digital workspace
       setBgImage(randomImg);
+      // Increment prompt counter
+      setAiPromptsCount(prev => {
+        const next = prev + 1;
+        localStorage.setItem('oss_cover_ai_prompts_count', next);
+        return next;
+      });
     }, 1800);
   };
 
@@ -215,30 +230,83 @@ export default function CoverView() {
         <div className="bg-[#0b0c10]/40 border border-slate-800 rounded-2xl p-6 space-y-4 h-max relative">
           {!user && <AuthOverlay message="Sign in to interact with prompt generation pipelines." />}
           
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            <span className="text-sm font-mono uppercase text-purple-400 tracking-wider">AI Cover Generator</span>
+          <div className="flex items-center justify-between gap-2 border-b border-slate-900 pb-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-mono uppercase text-purple-400 tracking-wider">AI Cover Generator</span>
+            </div>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+              aiPromptsCount >= 5 
+                ? 'bg-red-950/40 border-red-800/30 text-red-400' 
+                : 'bg-purple-950/40 border-purple-800/30 text-purple-400'
+            }`}>
+              {aiPromptsCount}/5 Free
+            </span>
           </div>
           
-          <form onSubmit={generateAICover} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono text-slate-500 uppercase block">Interactive AI Prompt</label>
-              <textarea 
-                value={aiPrompt}
-                onChange={e => setAiPrompt(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-300 font-serif leading-normal focus:outline-none focus:border-purple-500/25 h-28 resize-none"
-              />
+          {aiPromptsCount >= 5 ? (
+            <div className="bg-[#120b1e]/40 border border-purple-500/10 rounded-xl p-4 space-y-3.5 relative overflow-hidden">
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-purple-500/5 rounded-full blur-xl pointer-events-none" />
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-purple-950/60 border border-purple-500/20 rounded-lg text-purple-400 mt-0.5 shrink-0">
+                  <Lock className="w-4 h-4 animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-mono uppercase text-purple-300 tracking-wider">Free Limit Reached</h4>
+                  <p className="text-xs text-slate-400 font-light leading-relaxed">
+                    You have utilized all 5 free AI concept generation prompts. Upgrade to **Atelier Pro** to unlock unlimited high-fidelity prompt outputs.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => alert("Upgrade to Atelier Pro is currently simulated. Unlimited prompts unlocked!")}
+                  className="py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-mono text-[11px] font-bold rounded-lg transition-all cursor-pointer shadow-lg shadow-purple-900/20 text-center"
+                >
+                  Upgrade Now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAiPromptsCount(0);
+                    localStorage.setItem('oss_cover_ai_prompts_count', '0');
+                  }}
+                  className="py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-slate-200 font-mono text-[11px] rounded-lg transition-all cursor-pointer text-center"
+                >
+                  Reset Demo (0/5)
+                </button>
+              </div>
+              
+              <p className="text-[10px] font-mono text-slate-500 leading-normal text-center italic border-t border-slate-900 pt-2.5">
+                Note: Custom background uploads and manual canvas layers remain fully free & functional below.
+              </p>
             </div>
+          ) : (
+            <form onSubmit={generateAICover} className="space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-mono text-slate-500 uppercase block">Interactive AI Prompt</label>
+                  <span className="text-[10px] font-mono text-slate-500">Prompts: {aiPromptsCount}/5</span>
+                </div>
+                <textarea 
+                  value={aiPrompt}
+                  onChange={e => setAiPrompt(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-300 font-serif leading-normal focus:outline-none focus:border-purple-500/25 h-28 resize-none"
+                />
+              </div>
 
-            <button 
-              type="submit" 
-              disabled={generating}
-              className="w-full py-2.5 rounded-xl bg-purple-900/40 hover:bg-purple-900/60 border border-purple-800/50 text-sm font-mono text-purple-300 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
-              {generating ? 'Summoning Art vectors...' : 'Compile Cover Concept'}
-            </button>
-          </form>
+              <button 
+                type="submit" 
+                disabled={generating}
+                className="w-full py-2.5 rounded-xl bg-purple-900/40 hover:bg-purple-900/60 border border-purple-800/50 text-sm font-mono text-purple-300 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
+                {generating ? 'Summoning Art vectors...' : 'Compile Cover Concept'}
+              </button>
+            </form>
+          )}
 
           {/* AI Cover Preview Result */}
           <div className="bg-slate-950/40 border border-slate-850 rounded-xl p-4 flex flex-col items-center justify-center min-h-[160px] relative">

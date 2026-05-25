@@ -72,6 +72,14 @@ export default function PlanningView() {
   ]);
   const [draggedPlotIndex, setDraggedPlotIndex] = useState(null);
 
+  // Add Plot States
+  const [isAddPlotOpen, setIsAddPlotOpen] = useState(false);
+  const [newPlot, setNewPlot] = useState({ stage: 'Conflict', title: '', desc: '' });
+
+  // Custom Character Categories State
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newFieldLabels, setNewFieldLabels] = useState({});
+
   // 6. Conflict & Arcs
   const [conflictData, setConflictData] = useState({
     mainProblem: 'The obsidian siren statue is whispering forbidden secrets, slowly deteriorating Lekhaa\'s grip on reality.',
@@ -105,6 +113,10 @@ export default function PlanningView() {
   });
 
   const activeChapter = chapters.find(c => c.id === activeChapterId) || chapters[0];
+
+  useEffect(() => {
+    localStorage.setItem('oss_chapters', JSON.stringify(chapters));
+  }, [chapters]);
 
   const handleChapterContentChange = (val) => {
     setChapters(chapters.map(c => c.id === activeChapterId ? { ...c, content: val } : c));
@@ -217,20 +229,68 @@ export default function PlanningView() {
     setNewChar({ name: '', age: '', gender: '', species: '', role: '', traits: '', backstory: '' });
   };
 
-  // Add custom character field
-  const addCustomField = () => {
-    if (!customFieldLabel || !customFieldValue) return;
+  // Add custom character field for a specific section category
+  const addCustomFieldForCategory = (category, label, value = '') => {
+    if (!label) return;
     setCharacters(characters.map(c => {
       if (c.id === activeCharId) {
+        const id = 'cf_' + Date.now() + Math.random().toString(36).substr(2, 4);
         return {
           ...c,
-          customFields: [...(c.customFields || []), { label: customFieldLabel, value: customFieldValue }]
+          customFields: [...(c.customFields || []), { id, label, value, category }]
         };
       }
       return c;
     }));
-    setCustomFieldLabel('');
-    setCustomFieldValue('');
+  };
+
+  const addNewCharacterNode = () => {
+    const id = Date.now().toString();
+    const newName = `Character ${characters.length + 1}`;
+    const added = { 
+      id, 
+      name: newName, 
+      age: '', 
+      gender: '', 
+      species: '', 
+      role: '', 
+      traits: '', 
+      backstory: '', 
+      customFields: [],
+      customCategories: []
+    };
+    setCharacters([...characters, added]);
+    setNodePositions({ ...nodePositions, [id]: { x: Math.random() * 300 + 50, y: Math.random() * 200 + 50 } });
+    setActiveCharId(id);
+  };
+
+  const removeCustomField = (fieldId) => {
+    setCharacters(characters.map(c => {
+      if (c.id === activeCharId) {
+        return {
+          ...c,
+          customFields: (c.customFields || []).filter(f => f.id !== fieldId)
+        };
+      }
+      return c;
+    }));
+  };
+
+  const addCustomCategory = (e) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    setCharacters(characters.map(c => {
+      if (c.id === activeCharId) {
+        const categories = c.customCategories || [];
+        if (categories.includes(newCategoryName.trim())) return c;
+        return {
+          ...c,
+          customCategories: [...categories, newCategoryName.trim()]
+        };
+      }
+      return c;
+    }));
+    setNewCategoryName('');
   };
 
   // Add whiteboard relationship helper
@@ -239,6 +299,21 @@ export default function PlanningView() {
     if (!newConn.from || !newConn.to || !newConn.label) return;
     setConnections([...connections, newConn]);
     setNewConn({ from: '', to: '', label: '' });
+  };
+
+  // Add plot point helper
+  const addPlotPoint = (e) => {
+    e.preventDefault();
+    if (!newPlot.title || !newPlot.desc) return;
+    const added = {
+      id: 'p_' + Date.now(),
+      stage: newPlot.stage,
+      title: newPlot.title,
+      desc: newPlot.desc
+    };
+    setPlots([...plots, added]);
+    setNewPlot({ stage: 'Conflict', title: '', desc: '' });
+    setIsAddPlotOpen(false);
   };
 
   // Map Label Mouse Drag Handlers
@@ -354,7 +429,7 @@ export default function PlanningView() {
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex gap-2 border-b border-slate-800/80 overflow-x-auto pb-px scrollbar-none">
+      <div className="flex gap-2 border-b border-slate-800/80 overflow-x-auto pb-2 scrollbar-thin">
         {tabs.map(tab => {
           const TabIcon = tab.icon;
           return (
@@ -380,208 +455,840 @@ export default function PlanningView() {
         {/* ==========================================================================
             TAB: CHARACTERS
             ========================================================================== */}
-        {activeTab === 'characters' && (
-          <div className="grid md:grid-cols-3 min-h-[500px]">
-            {/* Left Sidebar List */}
-            <div className="border-r border-slate-800 p-4 space-y-4 bg-slate-950/40">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-mono uppercase text-purple-400 tracking-wider">Cast of Characters</span>
-              </div>
-              <div className="space-y-2">
-                {characters.map(char => (
-                  <button
-                    key={char.id}
-                    onClick={() => setActiveCharId(char.id)}
-                    className={`w-full text-left p-3 rounded-xl border transition-all flex justify-between items-center group ${
-                      activeCharId === char.id
-                        ? 'bg-purple-950/40 border-purple-500/30 text-purple-200 shadow-md'
-                        : 'border-slate-800/60 bg-slate-900/20 text-slate-400 hover:bg-slate-900/60'
-                    }`}
-                  >
-                    <div>
-                      <h4 className="font-serif font-medium">{char.name}</h4>
-                      <p className="text-xs font-mono text-slate-500">{char.role} • {char.species}</p>
-                    </div>
-                    {characters.length > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCharacters(characters.filter(c => c.id !== char.id));
-                          if (activeCharId === char.id) setActiveCharId(characters.find(c => c.id !== char.id).id);
-                        }}
-                        className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </button>
-                ))}
-              </div>
+        {activeTab === 'characters' && (() => {
+          const activeChar = characters.find(c => c.id === activeCharId) || characters[0];
+          const updateCharField = (field, value) => {
+            setCharacters(characters.map(c => c.id === activeCharId ? { ...c, [field]: value } : c));
+          };
 
-              {/* Add Character Form */}
-              <form onSubmit={addCharacter} className="space-y-3 pt-3 border-t border-slate-800 relative">
-                {!user && <AuthOverlay message="Sign in to add and manage your custom characters." />}
-                <h5 className="text-xs font-mono uppercase text-slate-500">Add Character Node</h5>
-                <input 
-                  type="text" 
-                  placeholder="Full Name..." 
-                  value={newChar.name}
-                  onChange={e => setNewChar({...newChar, name: e.target.value})}
-                  className="w-full bg-slate-950 text-sm border border-slate-800 p-2.5 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-200"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Role (e.g. Protagonist)..." 
-                    value={newChar.role}
-                    onChange={e => setNewChar({...newChar, role: e.target.value})}
-                    className="w-full bg-slate-950 text-xs border border-slate-800 p-2 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-200"
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Species (e.g. Human)..." 
-                    value={newChar.species}
-                    onChange={e => setNewChar({...newChar, species: e.target.value})}
-                    className="w-full bg-slate-950 text-xs border border-slate-800 p-2 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-200"
-                  />
-                </div>
-                <button type="submit" className="w-full py-2 rounded-lg bg-purple-900/20 hover:bg-purple-900/40 border border-purple-800/40 text-sm font-mono text-purple-300 transition-colors flex items-center justify-center gap-1 cursor-pointer">
-                  <Plus className="w-3.5 h-3.5" /> Append Character
-                </button>
-              </form>
-            </div>
-
-            {/* Character Detail Panel */}
-            <div className="col-span-2 p-6 space-y-6 relative overflow-y-auto max-h-[500px]">
-              {!user && <AuthOverlay message="Sign in to edit character details and add custom properties." />}
-              
-              <div className="flex justify-between items-start border-b border-slate-800 pb-4">
-                <div>
-                  <h2 className="text-3xl font-serif text-white">{activeChar?.name || 'Character Workspace'}</h2>
-                  <p className="text-xs text-purple-400 font-mono tracking-wider uppercase mt-1">Core Blueprint Identity</p>
-                </div>
-              </div>
-
-              {/* Core Attributes */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-slate-900/40 border border-slate-800/50 p-3.5 rounded-xl space-y-1">
-                  <span className="text-xs font-mono text-slate-500 uppercase">Age</span>
-                  <input 
-                    type="text" 
-                    value={activeChar?.age || ''} 
-                    onChange={e => setCharacters(characters.map(c => c.id === activeCharId ? { ...c, age: e.target.value } : c))}
-                    className="bg-transparent font-serif text-slate-200 focus:outline-none w-full"
-                  />
-                </div>
-                <div className="bg-slate-900/40 border border-slate-800/50 p-3.5 rounded-xl space-y-1">
-                  <span className="text-xs font-mono text-slate-500 uppercase">Gender</span>
-                  <input 
-                    type="text" 
-                    value={activeChar?.gender || ''} 
-                    onChange={e => setCharacters(characters.map(c => c.id === activeCharId ? { ...c, gender: e.target.value } : c))}
-                    className="bg-transparent font-serif text-slate-200 focus:outline-none w-full"
-                  />
-                </div>
-                <div className="bg-slate-900/40 border border-slate-800/50 p-3.5 rounded-xl space-y-1">
-                  <span className="text-xs font-mono text-slate-500 uppercase">Species</span>
-                  <input 
-                    type="text" 
-                    value={activeChar?.species || ''} 
-                    onChange={e => setCharacters(characters.map(c => c.id === activeCharId ? { ...c, species: e.target.value } : c))}
-                    className="bg-transparent font-serif text-slate-200 focus:outline-none w-full"
-                  />
-                </div>
-                <div className="bg-slate-900/40 border border-slate-800/50 p-3.5 rounded-xl space-y-1">
-                  <span className="text-xs font-mono text-slate-500 uppercase">Role</span>
-                  <input 
-                    type="text" 
-                    value={activeChar?.role || ''} 
-                    onChange={e => setCharacters(characters.map(c => c.id === activeCharId ? { ...c, role: e.target.value } : c))}
-                    className="bg-transparent font-serif text-slate-200 focus:outline-none w-full"
-                  />
-                </div>
-              </div>
-
-              {/* Psychology Description & Backstory */}
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-slate-500 uppercase tracking-wider">Personality & Key Psychology Traits</label>
-                  <textarea 
-                    value={activeChar?.traits || ''} 
-                    onChange={e => setCharacters(characters.map(c => c.id === activeCharId ? { ...c, traits: e.target.value } : c))}
-                    className="w-full bg-slate-900/40 border border-slate-800/80 p-3.5 rounded-xl text-sm text-slate-300 font-serif leading-relaxed focus:outline-none focus:border-purple-500/20 h-20 resize-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-slate-500 uppercase tracking-wider">Backstory & Key Life Events</label>
-                  <textarea 
-                    value={activeChar?.backstory || ''} 
-                    onChange={e => setCharacters(characters.map(c => c.id === activeCharId ? { ...c, backstory: e.target.value } : c))}
-                    className="w-full bg-slate-900/40 border border-slate-800/80 p-3.5 rounded-xl text-sm text-slate-300 font-serif leading-relaxed focus:outline-none focus:border-purple-500/20 h-24 resize-none"
-                  />
-                </div>
-              </div>
-
-              {/* Custom Character Fields */}
-              <div className="space-y-3 pt-3 border-t border-slate-800/80">
-                <label className="text-xs font-mono text-slate-500 uppercase tracking-wider">Custom Character Fields</label>
-                
-                {/* Existing custom fields */}
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {activeChar?.customFields && activeChar.customFields.map((field, fIdx) => (
-                    <div key={fIdx} className="bg-slate-900/30 border border-slate-800/60 p-3.5 rounded-xl flex justify-between items-start">
-                      <div>
-                        <span className="text-xs font-mono text-purple-400 uppercase tracking-wider block">{field.label}</span>
-                        <p className="font-serif text-sm text-slate-200 mt-1">{field.value}</p>
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-4 min-h-[600px] divide-y lg:divide-y-0 lg:divide-x divide-slate-900/60 animate-fade-in">
+              {/* Left Sidebar List */}
+              <div className="lg:col-span-1 p-4 flex flex-col justify-between bg-slate-950/20 space-y-4">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-mono uppercase text-purple-400 tracking-wider">Cast of Characters</span>
+                  </div>
+                  <div className="space-y-2">
+                    {characters.map(char => (
+                      <div key={char.id} className="relative group flex items-center w-full">
+                        <button
+                          type="button"
+                          onClick={() => setActiveCharId(char.id)}
+                          className={`w-full text-left p-4 rounded-xl border transition-all font-serif ${
+                            activeCharId === char.id
+                              ? 'bg-[#0d091b]/80 border-purple-500/50 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.12)] font-semibold'
+                              : 'border-slate-900/60 bg-[#06070a]/40 text-slate-500 hover:border-slate-800/40 hover:text-slate-300'
+                          }`}
+                        >
+                          <h4 className="text-base font-semibold truncate">{char.name || 'Unnamed Character'}</h4>
+                          <p className="text-xs font-mono text-slate-500 mt-1.5 uppercase tracking-wider">
+                            {char.role || 'No Role'} • {char.species || 'No Species'}
+                          </p>
+                        </button>
+                        
+                        {characters.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCharacters(characters.filter(c => c.id !== char.id));
+                              if (activeCharId === char.id) {
+                                const remaining = characters.filter(c => c.id !== char.id);
+                                setActiveCharId(remaining[0].id);
+                              }
+                            }}
+                            className="absolute right-3.5 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1 bg-slate-950/80 rounded-md border border-slate-900"
+                            title="Delete Character"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Add Character Button */}
+                <div className="pt-4 border-t border-slate-900/60">
+                  {!user && <AuthOverlay message="Sign in to add and manage your custom characters." />}
+                  <button 
+                    type="button"
+                    onClick={addNewCharacterNode}
+                    className="w-full py-3 rounded-xl bg-transparent border border-slate-800 hover:border-purple-500/30 text-sm font-mono text-slate-300 hover:text-purple-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Add Character
+                  </button>
+                </div>
+              </div>
+
+              {/* Character Detail Panel */}
+              <div className="lg:col-span-3 p-6 space-y-6 relative overflow-y-auto max-h-[85vh] pr-3 scrollbar-thin">
+                {!user && <AuthOverlay message="Sign in to edit character details and add custom properties." />}
+                
+                {/* 1. Core Identity Card */}
+                <div className="bg-[#0c0d12]/40 border border-slate-900/80 rounded-2xl p-6 space-y-5">
+                  <h3 className="text-xl font-serif text-white font-semibold">Core Identity</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Name</span>
+                      <input 
+                        type="text" 
+                        value={activeChar?.name || ''} 
+                        onChange={e => updateCharField('name', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Age</span>
+                      <input 
+                        type="text" 
+                        value={activeChar?.age || ''} 
+                        onChange={e => updateCharField('age', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Gender</span>
+                      <input 
+                        type="text" 
+                        value={activeChar?.gender || ''} 
+                        onChange={e => updateCharField('gender', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Species</span>
+                      <input 
+                        type="text" 
+                        value={activeChar?.species || ''} 
+                        onChange={e => updateCharField('species', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Role</span>
+                      <input 
+                        type="text" 
+                        value={activeChar?.role || ''} 
+                        onChange={e => updateCharField('role', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom Fields */}
+                  {activeChar?.customFields && activeChar.customFields.filter(f => f.category === 'core').length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-900/40">
+                      {activeChar.customFields.filter(f => f.category === 'core').map(field => (
+                        <div key={field.id} className="space-y-1.5 relative group/field">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[12px] font-mono text-purple-400/80 uppercase tracking-widest block">{field.label}</span>
+                            <button 
+                              type="button"
+                              onClick={() => removeCustomField(field.id)}
+                              className="text-slate-600 hover:text-red-400 opacity-0 group-hover/field:opacity-100 transition-opacity cursor-pointer p-0.5"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input 
+                            type="text" 
+                            value={field.value} 
+                            onChange={e => {
+                              setCharacters(characters.map(c => {
+                                if (c.id === activeCharId) {
+                                  return {
+                                    ...c,
+                                    customFields: c.customFields.map(f => f.id === field.id ? { ...f, value: e.target.value } : f)
+                                  };
+                                }
+                                return c;
+                              }));
+                            }}
+                            className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Custom Field Form */}
+                  <div className="flex gap-2 items-center pt-4 border-t border-slate-900/40 mt-4">
+                    <input 
+                      type="text" 
+                      placeholder="Add custom field..."
+                      value={newFieldLabels['core'] || ''}
+                      onChange={e => setNewFieldLabels({ ...newFieldLabels, core: e.target.value })}
+                      className="bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none placeholder-slate-700 flex-1 font-serif"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const label = newFieldLabels['core'] || '';
+                        if (!label.trim()) return;
+                        addCustomFieldForCategory('core', label.trim(), '');
+                        setNewFieldLabels({ ...newFieldLabels, core: '' });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-transparent border border-slate-855 hover:border-purple-500/30 text-sm font-mono text-slate-300 hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" /> Field
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Personality & Psychology Card */}
+                <div className="bg-[#0c0d12]/40 border border-slate-900/80 rounded-2xl p-6 space-y-5">
+                  <h3 className="text-xl font-serif text-white font-semibold">Personality & Psychology</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Traits</span>
+                      <input 
+                        type="text" 
+                        value={activeChar?.traits || ''} 
+                        onChange={e => updateCharField('traits', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Likes & Dislikes</span>
+                      <textarea 
+                        value={activeChar?.likesDislikes || ''} 
+                        onChange={e => updateCharField('likesDislikes', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Fears</span>
+                        <input 
+                          type="text" 
+                          value={activeChar?.fears || ''} 
+                          onChange={e => updateCharField('fears', e.target.value)}
+                          className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Desires</span>
+                        <input 
+                          type="text" 
+                          value={activeChar?.desires || ''} 
+                          onChange={e => updateCharField('desires', e.target.value)}
+                          className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Motivations</span>
+                        <input 
+                          type="text" 
+                          value={activeChar?.motivations || ''} 
+                          onChange={e => updateCharField('motivations', e.target.value)}
+                          className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Fatal Flaws</span>
+                        <input 
+                          type="text" 
+                          value={activeChar?.fatalFlaws || ''} 
+                          onChange={e => updateCharField('fatalFlaws', e.target.value)}
+                          className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Weaknesses</span>
+                      <input 
+                        type="text" 
+                        value={activeChar?.weaknesses || ''} 
+                        onChange={e => updateCharField('weaknesses', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Internal Conflict</span>
+                      <textarea 
+                        value={activeChar?.internalConflict || ''} 
+                        onChange={e => updateCharField('internalConflict', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom Fields */}
+                  {activeChar?.customFields && activeChar.customFields.filter(f => f.category === 'psychology').length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-900/40">
+                      {activeChar.customFields.filter(f => f.category === 'psychology').map(field => (
+                        <div key={field.id} className="space-y-1.5 relative group/field">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[12px] font-mono text-purple-400/80 uppercase tracking-widest block">{field.label}</span>
+                            <button 
+                              type="button"
+                              onClick={() => removeCustomField(field.id)}
+                              className="text-slate-600 hover:text-red-400 opacity-0 group-hover/field:opacity-100 transition-opacity cursor-pointer p-0.5"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input 
+                            type="text" 
+                            value={field.value} 
+                            onChange={e => {
+                              setCharacters(characters.map(c => {
+                                if (c.id === activeCharId) {
+                                  return {
+                                    ...c,
+                                    customFields: c.customFields.map(f => f.id === field.id ? { ...f, value: e.target.value } : f)
+                                  };
+                                }
+                                return c;
+                              }));
+                            }}
+                            className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Custom Field Form */}
+                  <div className="flex gap-2 items-center pt-4 border-t border-slate-900/40 mt-4">
+                    <input 
+                      type="text" 
+                      placeholder="Add custom field..."
+                      value={newFieldLabels['psychology'] || ''}
+                      onChange={e => setNewFieldLabels({ ...newFieldLabels, psychology: e.target.value })}
+                      className="bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none placeholder-slate-700 flex-1 font-serif"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const label = newFieldLabels['psychology'] || '';
+                        if (!label.trim()) return;
+                        addCustomFieldForCategory('psychology', label.trim(), '');
+                        setNewFieldLabels({ ...newFieldLabels, psychology: '' });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-transparent border border-slate-855 hover:border-purple-500/30 text-sm font-mono text-slate-300 hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" /> Field
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Physical Description Card */}
+                <div className="bg-[#0c0d12]/40 border border-slate-900/80 rounded-2xl p-6 space-y-5">
+                  <h3 className="text-xl font-serif text-white font-semibold">Physical Description</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Appearance</span>
+                        <input 
+                          type="text" 
+                          value={activeChar?.appearance || ''} 
+                          onChange={e => updateCharField('appearance', e.target.value)}
+                          className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Clothing Style</span>
+                        <input 
+                          type="text" 
+                          value={activeChar?.clothingStyle || ''} 
+                          onChange={e => updateCharField('clothingStyle', e.target.value)}
+                          className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Distinguishing Features</span>
+                      <textarea 
+                        value={activeChar?.distinguishingFeatures || ''} 
+                        onChange={e => updateCharField('distinguishingFeatures', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom Fields */}
+                  {activeChar?.customFields && activeChar.customFields.filter(f => f.category === 'physical').length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-900/40">
+                      {activeChar.customFields.filter(f => f.category === 'physical').map(field => (
+                        <div key={field.id} className="space-y-1.5 relative group/field">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[12px] font-mono text-purple-400/80 uppercase tracking-widest block">{field.label}</span>
+                            <button 
+                              type="button"
+                              onClick={() => removeCustomField(field.id)}
+                              className="text-slate-600 hover:text-red-400 opacity-0 group-hover/field:opacity-100 transition-opacity cursor-pointer p-0.5"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input 
+                            type="text" 
+                            value={field.value} 
+                            onChange={e => {
+                              setCharacters(characters.map(c => {
+                                if (c.id === activeCharId) {
+                                  return {
+                                    ...c,
+                                    customFields: c.customFields.map(f => f.id === field.id ? { ...f, value: e.target.value } : f)
+                                  };
+                                }
+                                return c;
+                              }));
+                            }}
+                            className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Custom Field Form */}
+                  <div className="flex gap-2 items-center pt-4 border-t border-slate-900/40 mt-4">
+                    <input 
+                      type="text" 
+                      placeholder="Add custom field..."
+                      value={newFieldLabels['physical'] || ''}
+                      onChange={e => setNewFieldLabels({ ...newFieldLabels, physical: e.target.value })}
+                      className="bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none placeholder-slate-700 flex-1 font-serif"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const label = newFieldLabels['physical'] || '';
+                        if (!label.trim()) return;
+                        addCustomFieldForCategory('physical', label.trim(), '');
+                        setNewFieldLabels({ ...newFieldLabels, physical: '' });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-transparent border border-slate-855 hover:border-purple-500/30 text-sm font-mono text-slate-300 hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" /> Field
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Backstory Card */}
+                <div className="bg-[#0c0d12]/40 border border-slate-900/80 rounded-2xl p-6 space-y-5">
+                  <h3 className="text-xl font-serif text-white font-semibold">Backstory</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Childhood Events</span>
+                      <textarea 
+                        value={activeChar?.childhoodEvents || ''} 
+                        onChange={e => updateCharField('childhoodEvents', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Key Life Events</span>
+                      <textarea 
+                        value={activeChar?.keyLifeEvents || activeChar?.backstory || ''} 
+                        onChange={e => {
+                          updateCharField('keyLifeEvents', e.target.value);
+                          updateCharField('backstory', e.target.value);
+                        }}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Family Background or Trauma</span>
+                      <textarea 
+                        value={activeChar?.familyBackground || ''} 
+                        onChange={e => updateCharField('familyBackground', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom Fields */}
+                  {activeChar?.customFields && activeChar.customFields.filter(f => f.category === 'backstory').length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-900/40">
+                      {activeChar.customFields.filter(f => f.category === 'backstory').map(field => (
+                        <div key={field.id} className="space-y-1.5 relative group/field">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[12px] font-mono text-purple-400/80 uppercase tracking-widest block">{field.label}</span>
+                            <button 
+                              type="button"
+                              onClick={() => removeCustomField(field.id)}
+                              className="text-slate-600 hover:text-red-400 opacity-0 group-hover/field:opacity-100 transition-opacity cursor-pointer p-0.5"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input 
+                            type="text" 
+                            value={field.value} 
+                            onChange={e => {
+                              setCharacters(characters.map(c => {
+                                if (c.id === activeCharId) {
+                                  return {
+                                    ...c,
+                                    customFields: c.customFields.map(f => f.id === field.id ? { ...f, value: e.target.value } : f)
+                                  };
+                                }
+                                return c;
+                              }));
+                            }}
+                            className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Custom Field Form */}
+                  <div className="flex gap-2 items-center pt-4 border-t border-slate-900/40 mt-4">
+                    <input 
+                      type="text" 
+                      placeholder="Add custom field..."
+                      value={newFieldLabels['backstory'] || ''}
+                      onChange={e => setNewFieldLabels({ ...newFieldLabels, backstory: e.target.value })}
+                      className="bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none placeholder-slate-700 flex-1 font-serif"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const label = newFieldLabels['backstory'] || '';
+                        if (!label.trim()) return;
+                        addCustomFieldForCategory('backstory', label.trim(), '');
+                        setNewFieldLabels({ ...newFieldLabels, backstory: '' });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-transparent border border-slate-855 hover:border-purple-500/30 text-sm font-mono text-slate-300 hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" /> Field
+                    </button>
+                  </div>
+                </div>
+
+                {/* 5. Behaviour Card */}
+                <div className="bg-[#0c0d12]/40 border border-slate-900/80 rounded-2xl p-6 space-y-5">
+                  <h3 className="text-xl font-serif text-white font-semibold">Behaviour</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Speech Style</span>
+                        <input 
+                          type="text" 
+                          value={activeChar?.speechStyle || ''} 
+                          onChange={e => updateCharField('speechStyle', e.target.value)}
+                          className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Mannerisms</span>
+                        <input 
+                          type="text" 
+                          value={activeChar?.mannerisms || ''} 
+                          onChange={e => updateCharField('mannerisms', e.target.value)}
+                          className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 md:w-1/2">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">Quirks</span>
+                      <input 
+                        type="text" 
+                        value={activeChar?.quirks || ''} 
+                        onChange={e => updateCharField('quirks', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom Fields */}
+                  {activeChar?.customFields && activeChar.customFields.filter(f => f.category === 'behaviour').length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-900/40">
+                      {activeChar.customFields.filter(f => f.category === 'behaviour').map(field => (
+                        <div key={field.id} className="space-y-1.5 relative group/field">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[12px] font-mono text-purple-400/80 uppercase tracking-widest block">{field.label}</span>
+                            <button 
+                              type="button"
+                              onClick={() => removeCustomField(field.id)}
+                              className="text-slate-600 hover:text-red-400 opacity-0 group-hover/field:opacity-100 transition-opacity cursor-pointer p-0.5"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input 
+                            type="text" 
+                            value={field.value} 
+                            onChange={e => {
+                              setCharacters(characters.map(c => {
+                                if (c.id === activeCharId) {
+                                  return {
+                                    ...c,
+                                    customFields: c.customFields.map(f => f.id === field.id ? { ...f, value: e.target.value } : f)
+                                  };
+                                }
+                                return c;
+                              }));
+                            }}
+                            className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Custom Field Form */}
+                  <div className="flex gap-2 items-center pt-4 border-t border-slate-900/40 mt-4">
+                    <input 
+                      type="text" 
+                      placeholder="Add custom field..."
+                      value={newFieldLabels['behaviour'] || ''}
+                      onChange={e => setNewFieldLabels({ ...newFieldLabels, behaviour: e.target.value })}
+                      className="bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none placeholder-slate-700 flex-1 font-serif"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const label = newFieldLabels['behaviour'] || '';
+                        if (!label.trim()) return;
+                        addCustomFieldForCategory('behaviour', label.trim(), '');
+                        setNewFieldLabels({ ...newFieldLabels, behaviour: '' });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-transparent border border-slate-855 hover:border-purple-500/30 text-sm font-mono text-slate-300 hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" /> Field
+                    </button>
+                  </div>
+                </div>
+
+                {/* 6. What Makes Them Tick / Break Card */}
+                <div className="bg-[#0c0d12]/40 border border-slate-900/80 rounded-2xl p-6 space-y-5">
+                  <h3 className="text-xl font-serif text-white font-semibold">What Makes Them Tick / Break</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">What Makes Them Tick</span>
+                      <textarea 
+                        value={activeChar?.whatMakesThemTick || ''} 
+                        onChange={e => updateCharField('whatMakesThemTick', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">What Breaks Them</span>
+                      <textarea 
+                        value={activeChar?.whatBreaksThem || ''} 
+                        onChange={e => updateCharField('whatBreaksThem', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[12px] font-mono text-slate-400 uppercase tracking-widest block">What They Want and Need (Motivation)</span>
+                      <textarea 
+                        value={activeChar?.whatTheyWantAndNeed || ''} 
+                        onChange={e => updateCharField('whatTheyWantAndNeed', e.target.value)}
+                        className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 min-h-[110px] resize-none font-serif"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom Fields */}
+                  {activeChar?.customFields && activeChar.customFields.filter(f => f.category === 'tickbreak').length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-900/40">
+                      {activeChar.customFields.filter(f => f.category === 'tickbreak').map(field => (
+                        <div key={field.id} className="space-y-1.5 relative group/field">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[12px] font-mono text-purple-400/80 uppercase tracking-widest block">{field.label}</span>
+                            <button 
+                              type="button"
+                              onClick={() => removeCustomField(field.id)}
+                              className="text-slate-600 hover:text-red-400 opacity-0 group-hover/field:opacity-100 transition-opacity cursor-pointer p-0.5"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input 
+                            type="text" 
+                            value={field.value} 
+                            onChange={e => {
+                              setCharacters(characters.map(c => {
+                                if (c.id === activeCharId) {
+                                  return {
+                                    ...c,
+                                    customFields: c.customFields.map(f => f.id === field.id ? { ...f, value: e.target.value } : f)
+                                  };
+                                }
+                                return c;
+                              }));
+                            }}
+                            className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Custom Field Form */}
+                  <div className="flex gap-2 items-center pt-4 border-t border-slate-900/40 mt-4">
+                    <input 
+                      type="text" 
+                      placeholder="Add custom field..."
+                      value={newFieldLabels['tickbreak'] || ''}
+                      onChange={e => setNewFieldLabels({ ...newFieldLabels, tickbreak: e.target.value })}
+                      className="bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none placeholder-slate-700 flex-1 font-serif"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const label = newFieldLabels['tickbreak'] || '';
+                        if (!label.trim()) return;
+                        addCustomFieldForCategory('tickbreak', label.trim(), '');
+                        setNewFieldLabels({ ...newFieldLabels, tickbreak: '' });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-transparent border border-slate-855 hover:border-purple-500/30 text-sm font-mono text-slate-300 hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" /> Field
+                    </button>
+                  </div>
+                </div>
+
+                {/* 7. Dynamic User Custom Categories */}
+                {activeChar?.customCategories && activeChar.customCategories.map((categoryName) => (
+                  <div key={categoryName} className="bg-[#0c0d12]/40 border border-slate-900/80 rounded-2xl p-6 space-y-5">
+                    <div className="flex justify-between items-center border-b border-slate-900/60 pb-3">
+                      <h3 className="text-xl font-serif text-white font-semibold">{categoryName}</h3>
                       <button 
+                        type="button"
                         onClick={() => {
                           setCharacters(characters.map(c => {
                             if (c.id === activeCharId) {
                               return {
                                 ...c,
-                                customFields: c.customFields.filter((_, idx) => idx !== fIdx)
+                                customCategories: (c.customCategories || []).filter(cat => cat !== categoryName),
+                                customFields: (c.customFields || []).filter(f => f.category !== categoryName)
                               };
                             }
                             return c;
                           }));
                         }}
-                        className="text-slate-600 hover:text-red-400 cursor-pointer p-0.5"
+                        className="text-slate-500 hover:text-red-400 transition-colors cursor-pointer p-1 bg-slate-950/60 rounded-md border border-slate-900"
+                        title="Remove category"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  ))}
+
+                    {/* Custom Fields in this category */}
+                    {activeChar?.customFields && activeChar.customFields.filter(f => f.category === categoryName).length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {activeChar.customFields.filter(f => f.category === categoryName).map(field => (
+                          <div key={field.id} className="space-y-1.5 relative group/field">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[12px] font-mono text-purple-400/80 uppercase tracking-widest block">{field.label}</span>
+                              <button 
+                                type="button"
+                                onClick={() => removeCustomField(field.id)}
+                                className="text-slate-600 hover:text-red-400 opacity-0 group-hover/field:opacity-100 transition-opacity cursor-pointer p-0.5"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <input 
+                              type="text" 
+                              value={field.value} 
+                              onChange={e => {
+                                setCharacters(characters.map(c => {
+                                  if (c.id === activeCharId) {
+                                    return {
+                                      ...c,
+                                      customFields: c.customFields.map(f => f.id === field.id ? { ...f, value: e.target.value } : f)
+                                    };
+                                  }
+                                  return c;
+                                }));
+                              }}
+                              className="w-full bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl p-3.5 text-base text-slate-200 focus:outline-none placeholder-slate-700 font-serif"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-600 font-mono italic">No custom fields in this category yet.</p>
+                    )}
+
+                    {/* Add Custom Field Form */}
+                    <div className="flex gap-2 items-center pt-4 border-t border-slate-900/40 mt-4">
+                      <input 
+                        type="text" 
+                        placeholder="Add custom field..."
+                        value={newFieldLabels[categoryName] || ''}
+                        onChange={e => setNewFieldLabels({ ...newFieldLabels, [categoryName]: e.target.value })}
+                        className="bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none placeholder-slate-700 flex-1 font-serif"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const label = newFieldLabels[categoryName] || '';
+                          if (!label.trim()) return;
+                          addCustomFieldForCategory(categoryName, label.trim(), '');
+                          setNewFieldLabels({ ...newFieldLabels, [categoryName]: '' });
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-transparent border border-slate-855 hover:border-purple-500/30 text-sm font-mono text-slate-300 hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                      >
+                        <Plus className="w-4 h-4" /> Field
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* 8. Add Custom Category Card */}
+                <div className="border border-dashed border-purple-900/45 bg-[#0d091b]/15 p-6 rounded-2xl space-y-4">
+                  <h3 className="text-base font-serif text-white font-semibold flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-purple-400" /> Add Custom Category
+                  </h3>
+                  
+                  <div className="flex gap-3">
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Powers & Abilities"
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      className="bg-[#050608]/90 border border-slate-900/90 focus:border-purple-950/60 rounded-xl px-4 py-3 text-base text-slate-200 focus:outline-none placeholder-slate-700 flex-1 font-serif"
+                    />
+                    <button 
+                      type="button"
+                      onClick={addCustomCategory}
+                      className="px-5 py-3 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-sm font-medium text-white transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(147,51,234,0.25)] cursor-pointer whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" /> Add Category
+                    </button>
+                  </div>
                 </div>
 
-                {/* Add Custom Field Inputs */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <input 
-                    type="text" 
-                    placeholder="Field Label (e.g. Fears)..." 
-                    value={customFieldLabel}
-                    onChange={e => setCustomFieldLabel(e.target.value)}
-                    className="bg-slate-950 text-sm border border-slate-800 p-2.5 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-200 flex-1"
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Field Value..." 
-                    value={customFieldValue}
-                    onChange={e => setCustomFieldValue(e.target.value)}
-                    className="bg-slate-950 text-sm border border-slate-800 p-2.5 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-200 flex-1"
-                  />
-                  <button 
-                    onClick={addCustomField}
-                    className="px-4 py-2.5 rounded-lg bg-purple-900/20 hover:bg-purple-900/40 border border-purple-800/40 text-sm font-mono text-purple-300 transition-all flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Property
-                  </button>
-                </div>
               </div>
-
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ==========================================================================
             TAB: RELATIONSHIP CANVAS (WHITEBOARD CONSPIRACY)
@@ -935,13 +1642,22 @@ export default function PlanningView() {
           <div className="p-6 space-y-6 relative min-h-[500px]">
             {!user && <AuthOverlay message="Sign in to reorder plot cards and structure your story timeline." />}
             
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h3 className="text-xl font-serif text-white flex items-center gap-2">
                   <List className="w-5 h-5 text-purple-400" /> Draggable Plot Points
                 </h3>
                 <p className="text-xs font-mono text-slate-400 tracking-wide mt-0.5">DRAG AND DROP STORY ARCHITECTURE — DESIGN NARRATIVE MOMENTS IN VECTOR TIMELINES</p>
               </div>
+
+              {user && (
+                <button 
+                  onClick={() => setIsAddPlotOpen(true)}
+                  className="px-4 py-2 bg-purple-900/20 hover:bg-purple-900/40 border border-purple-800/40 rounded-xl text-sm font-mono text-purple-300 transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" /> Add Plot Point
+                </button>
+              )}
             </div>
 
             {/* Draggable Plot Grid */}
@@ -966,13 +1682,97 @@ export default function PlanningView() {
                     <h4 className="font-serif font-medium text-slate-100 text-sm">{plot.title}</h4>
                     <p className="text-xs text-slate-400 leading-normal font-light">{plot.desc}</p>
                   </div>
-                  <div className="border-t border-slate-900 pt-2 flex justify-between items-center text-xs font-mono text-slate-500">
+                  <div className="border-t border-slate-900/60 pt-2 flex justify-between items-center text-xs font-mono text-slate-500">
                     <span>Index 0{idx + 1}</span>
-                    <span className="w-2 h-2 rounded-full bg-slate-800" />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPlots(plots.filter(p => p.id !== plot.id));
+                      }}
+                      className="text-slate-600 hover:text-red-400 cursor-pointer p-0.5 transition-colors"
+                      title="Delete plot point"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               ))}
+
+              {/* Add Plot Point Card as last grid item */}
+              {user && (
+                <button
+                  onClick={() => setIsAddPlotOpen(true)}
+                  className="border-2 border-dashed border-slate-800/80 hover:border-purple-500/40 bg-slate-950/10 hover:bg-[#120f1f]/20 rounded-2xl p-4 min-h-[160px] flex flex-col items-center justify-center gap-2 transition-all cursor-pointer group"
+                >
+                  <Plus className="w-6 h-6 text-slate-650 group-hover:text-purple-400 transition-colors animate-pulse" />
+                  <span className="text-xs font-mono text-slate-500 group-hover:text-purple-300 transition-colors font-bold uppercase tracking-wider">Add Plot Card</span>
+                </button>
+              )}
             </div>
+
+            {/* Add Plot Point Modal */}
+            {isAddPlotOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+                <div className="relative w-full max-w-md p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 className="text-lg font-serif text-white font-medium">Create New Plot Card</h3>
+                    <button 
+                      onClick={() => setIsAddPlotOpen(false)}
+                      className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xl"
+                    >
+                      &times;
+                    </button>
+                  </div>
+
+                  <form onSubmit={addPlotPoint} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-mono text-slate-500 uppercase block">Narrative Stage</label>
+                      <select
+                        value={newPlot.stage}
+                        onChange={e => setNewPlot({...newPlot, stage: e.target.value})}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-300 text-sm"
+                      >
+                        <option>Introduction</option>
+                        <option>Conflict</option>
+                        <option>Climax</option>
+                        <option>Twist</option>
+                        <option>Resolution</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-mono text-slate-500 uppercase block">Plot Title</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. The Discovery..." 
+                        value={newPlot.title}
+                        onChange={e => setNewPlot({...newPlot, title: e.target.value})}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-200 text-sm"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-mono text-slate-500 uppercase block">Plot Description / Core Event</label>
+                      <textarea 
+                        placeholder="Describe what occurs during this narrative milestone..." 
+                        value={newPlot.desc}
+                        onChange={e => setNewPlot({...newPlot, desc: e.target.value})}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg focus:outline-none focus:border-purple-500/30 text-slate-200 text-sm h-24 resize-none"
+                        required
+                      />
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      className="w-full py-2.5 rounded-xl bg-purple-650 hover:bg-purple-600 text-white font-medium text-sm transition-colors cursor-pointer font-mono uppercase tracking-wider text-xs"
+                    >
+                      Append Plot Card
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

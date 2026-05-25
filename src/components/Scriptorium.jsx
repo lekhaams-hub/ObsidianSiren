@@ -12,6 +12,7 @@ import PlanningView from './weaver/PlanningView';
 import FormattingView from './weaver/FormattingView';
 import CoverView from './weaver/CoverView';
 import ConsultationView from './weaver/ConsultationView';
+import AskObsidianView from './AskObsidianView';
 
 export default function Scriptorium({ onBack }) {
   const { user, login, logout, setIsAuthModalOpen } = useAuth();
@@ -329,13 +330,7 @@ export default function Scriptorium({ onBack }) {
           )}
 
           {activeTab === 'help' && (
-            <div className="space-y-4 animate-fade-in text-center py-20">
-              <HelpCircle className="w-12 h-12 mx-auto text-slate-700" />
-              <h2 className="text-2xl font-serif text-white">Ask Obsidian</h2>
-              <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
-                Connect with our interactive publishing assistant to troubleshoot formatting dimensions, trim layouts, or book templates.
-              </p>
-            </div>
+            <AskObsidianView />
           )}
 
           {activeTab === 'settings' && (

@@ -7,9 +7,25 @@
 
 @layer base {
   html {
-    font-size: 116%;
+    font-size: 124%;
   }
   body {
     @apply bg-[#0B0F19] text-slate-100 antialiased font-serif;
   }
+}
+
+/* Styled thin scrollbars */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 5px;
+  width: 5px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.25);
+  border-radius: 99px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.45);
 }

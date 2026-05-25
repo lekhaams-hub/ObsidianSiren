@@ -13,6 +13,7 @@ import InquiryVault from './scholar/InquiryVault';
 import AcademicScriptorium from './scholar/AcademicScriptorium';
 import CitationsView from './scholar/CitationsView';
 import ExpertConsultationView from './scholar/ExpertConsultationView';
+import AskObsidianView from './AskObsidianView';
 
 export default function Sanctum({ onBack }) {
   const { user, logout, setIsAuthModalOpen } = useAuth();
@@ -371,13 +372,7 @@ export default function Sanctum({ onBack }) {
           )}
 
           {activeTab === 'help' && (
-            <div className="space-y-4 animate-fade-in text-center py-20">
-              <HelpCircle className="w-12 h-12 mx-auto text-slate-700" />
-              <h2 className="text-2xl font-serif text-white">Ask Obsidian</h2>
-              <p className="text-base text-slate-400 max-w-sm mx-auto leading-relaxed">
-                Connect with our interactive assistant to clarify formatting parameters, citation indexes, or book layouts.
-              </p>
-            </div>
+            <AskObsidianView />
           )}
 
           {activeTab === 'settings' && (

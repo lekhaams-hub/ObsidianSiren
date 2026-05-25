@@ -2,22 +2,21 @@ import React, { useState } from 'react';
 import { GraduationCap, ArrowRight, Sparkles, Compass, LogOut, Feather } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export default function LandingPage({onSelectWeaver, onSelectScholar}) {
+export default function LandingPage({ onSelectWeaver, onSelectScholar }) {
   const [hoveredPath, setHoveredPath] = useState(null);
   const { user, login, logout, checkAuthAndExecute } = useAuth();
 
   return (
     <div className="min-h-screen bg-[#040207] text-slate-100 flex flex-col justify-between overflow-hidden relative selection:bg-purple-500/30 selection:text-purple-200">
-      
+
       {/* Dynamic Background Glow Effects */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div 
-          className="absolute -top-[40%] -left-[20%] w-[80vw] h-[80vw] rounded-full bg-indigo-900/10 blur-[120px]" 
+        <div
+          className="absolute -top-[40%] -left-[20%] w-[80vw] h-[80vw] rounded-full bg-indigo-900/10 blur-[120px]"
         />
-        <div 
-          className={`absolute -bottom-[40%] -right-[20%] w-[80vw] h-[80vw] rounded-full bg-slate-900/20 blur-[120px] transition-all duration-1000 ease-in-out ${
-            hoveredPath === 'scholar' ? 'bg-purple-600/15 scale-110' : ''
-          }`} 
+        <div
+          className={`absolute -bottom-[40%] -right-[20%] w-[80vw] h-[80vw] rounded-full bg-slate-900/20 blur-[120px] transition-all duration-1000 ease-in-out ${hoveredPath === 'scholar' ? 'bg-purple-600/15 scale-110' : ''
+            }`}
         />
       </div>
 
@@ -71,33 +70,33 @@ export default function LandingPage({onSelectWeaver, onSelectScholar}) {
 
             {/* 2. Natural silhouette glows using blurred, color-boosted duplicates of the actual logo */}
             {/* Inner intense glow - scaled slightly */}
-            <img 
-              src="/assets/OSS-main-logos.png" 
-              alt="" 
+            <img
+              src="/assets/OSS-main-logos.png"
+              alt=""
               className="absolute h-44 sm:h-64 md:h-80 lg:h-96 object-contain blur-2xl opacity-65 scale-[1.06] pointer-events-none select-none brightness-125 saturate-[1.8] mix-blend-screen"
-              onError={(e) => e.target.style.display = 'none'} 
+              onError={(e) => e.target.style.display = 'none'}
             />
             {/* Middle wide glow - scaled further */}
-            <img 
-              src="/assets/OSS-main-logos.png" 
-              alt="" 
+            <img
+              src="/assets/OSS-main-logos.png"
+              alt=""
               className="absolute h-44 sm:h-64 md:h-80 lg:h-96 object-contain blur-[40px] opacity-45 scale-[1.15] pointer-events-none select-none brightness-110 saturate-[1.6] mix-blend-screen"
-              onError={(e) => e.target.style.display = 'none'} 
+              onError={(e) => e.target.style.display = 'none'}
             />
             {/* Outer soft ambient glow - scaled significantly */}
-            <img 
-              src="/assets/OSS-main-logos.png" 
-              alt="" 
+            <img
+              src="/assets/OSS-main-logos.png"
+              alt=""
               className="absolute h-44 sm:h-64 md:h-80 lg:h-96 object-contain blur-[72px] opacity-25 scale-[1.3] pointer-events-none select-none brightness-100 saturate-[1.4] mix-blend-screen"
-              onError={(e) => e.target.style.display = 'none'} 
+              onError={(e) => e.target.style.display = 'none'}
             />
 
             {/* 3. The main crisp logo on top */}
-            <img 
-              src="/assets/OSS-main-logos.png" 
-              alt="Obsidian Siren Logo" 
-              className="h-44 sm:h-64 md:h-80 lg:h-96 object-contain relative z-10 filter drop-shadow-[0_0_15px_rgba(168,85,247,0.35)]" 
-              onError={(e) => e.target.style.display = 'none'} 
+            <img
+              src="/assets/OSS-main-logos.png"
+              alt="Obsidian Siren Logo"
+              className="h-44 sm:h-64 md:h-80 lg:h-96 object-contain relative z-10 filter drop-shadow-[0_0_15px_rgba(168,85,247,0.35)]"
+              onError={(e) => e.target.style.display = 'none'}
             />
           </div>
 
@@ -106,7 +105,7 @@ export default function LandingPage({onSelectWeaver, onSelectScholar}) {
           </h3>
 
           <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-[88px] font-serif font-medium tracking-tight text-white mb-6 leading-[1.1] w-full">
-            Where does your <span className="text-purple-400 italic font-serif">journey</span> begin?
+            Where does your journey begin?
           </h1>
 
           <p className="text-slate-300 text-base sm:text-lg md:text-xl font-light mb-10 w-full max-w-4xl leading-relaxed">
@@ -126,15 +125,14 @@ export default function LandingPage({onSelectWeaver, onSelectScholar}) {
 
         {/* Dual Path Interactive Grid */}
         <div className="grid md:grid-cols-2 gap-8 w-full max-w-5xl transition-all duration-500">
-          
+
           {/* Path 1: The Weaver's Path */}
-          <div 
+          <div
             onMouseEnter={() => setHoveredPath('weaver')}
             onMouseLeave={() => hoveredPath === 'weaver' && setHoveredPath(null)}
             onClick={onSelectWeaver}
-            className={`group relative rounded-3xl bg-[#0d0a15]/80 border border-slate-800/80 p-6 sm:p-8 md:p-10 flex flex-col justify-between h-auto min-h-[350px] md:h-[400px] cursor-pointer transition-all duration-500 backdrop-blur-md overflow-hidden ${
-              hoveredPath === 'weaver' ? 'border-purple-500/70 shadow-[0_0_20px_rgba(168,85,247,0.3),20px_20px_40px_-10px_rgba(168,85,247,0.6)] scale-[1.03]' : 'hover:border-slate-700/80'
-            }`}
+            className={`group relative rounded-3xl bg-[#0d0a15]/80 border border-slate-800/80 p-6 sm:p-8 md:p-10 flex flex-col justify-between h-auto min-h-[350px] md:h-[400px] cursor-pointer transition-all duration-500 backdrop-blur-md overflow-hidden ${hoveredPath === 'weaver' ? 'border-purple-500/70 shadow-[0_0_20px_rgba(168,85,247,0.3),20px_20px_40px_-10px_rgba(168,85,247,0.6)] scale-[1.03]' : 'hover:border-slate-700/80'
+              }`}
           >
             <div>
               <div className="mb-8">
@@ -142,11 +140,11 @@ export default function LandingPage({onSelectWeaver, onSelectScholar}) {
                   <Feather className="w-6 h-6" />
                 </div>
               </div>
-              
+
               <div className="text-sm font-sans tracking-[0.2em] text-slate-400 uppercase mb-4 font-semibold">
                 Fiction • Fantasy • Memoir
               </div>
-              
+
               <h2 className="text-3xl sm:text-4xl font-serif font-medium mb-4 text-white">
                 The Weaver's Path
               </h2>
@@ -162,13 +160,12 @@ export default function LandingPage({onSelectWeaver, onSelectScholar}) {
           </div>
 
           {/* Path 2: The Scholar's Sanctum */}
-          <div 
+          <div
             onMouseEnter={() => setHoveredPath('scholar')}
             onMouseLeave={() => hoveredPath === 'scholar' && setHoveredPath(null)}
             onClick={onSelectScholar}
-            className={`group relative rounded-3xl bg-[#0d0a15]/80 border border-slate-800/80 p-6 sm:p-8 md:p-10 flex flex-col justify-between h-auto min-h-[350px] md:h-[400px] cursor-pointer transition-all duration-500 backdrop-blur-md overflow-hidden ${
-              hoveredPath === 'scholar' ? 'border-purple-500/70 shadow-[0_0_20px_rgba(168,85,247,0.3),20px_20px_40px_-10px_rgba(168,85,247,0.6)] scale-[1.03]' : 'hover:border-slate-700/80'
-            }`}
+            className={`group relative rounded-3xl bg-[#0d0a15]/80 border border-slate-800/80 p-6 sm:p-8 md:p-10 flex flex-col justify-between h-auto min-h-[350px] md:h-[400px] cursor-pointer transition-all duration-500 backdrop-blur-md overflow-hidden ${hoveredPath === 'scholar' ? 'border-purple-500/70 shadow-[0_0_20px_rgba(168,85,247,0.3),20px_20px_40px_-10px_rgba(168,85,247,0.6)] scale-[1.03]' : 'hover:border-slate-700/80'
+              }`}
           >
             <div>
               <div className="mb-8">
@@ -176,11 +173,11 @@ export default function LandingPage({onSelectWeaver, onSelectScholar}) {
                   <GraduationCap className="w-6 h-6" />
                 </div>
               </div>
-              
+
               <div className="text-sm font-sans tracking-[0.2em] text-slate-400 uppercase mb-4 font-semibold">
                 Research • Thesis • Academic
               </div>
-              
+
               <h2 className="text-4xl font-serif font-medium mb-4 text-white">
                 The Scholar's Sanctum
               </h2>

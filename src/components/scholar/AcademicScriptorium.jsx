@@ -6,7 +6,9 @@ export default function AcademicScriptorium({ documents = [] }) {
   const { user, setIsAuthModalOpen } = useAuth();
   
   // Editor States
-  const [editorText, setEditorText] = useState('');
+  const [editorText, setEditorText] = useState(() => {
+    return localStorage.getItem('oss_scholar_thesis') || '';
+  });
   
   // Chat States
   const [assistantTab, setAssistantTab] = useState('vault'); // 'vault', 'general'
@@ -18,6 +20,11 @@ export default function AcademicScriptorium({ documents = [] }) {
 
   // Sync selected document context
   const activeDoc = documents[0];
+
+  // Auto-save changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('oss_scholar_thesis', editorText);
+  }, [editorText]);
 
   const handleChatSubmit = (e) => {
     e.preventDefault();

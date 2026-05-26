@@ -9,7 +9,6 @@ import { useAuth } from '../context/AuthContext';
 // Import newly created Weaver Path modular views
 import DashboardView from './weaver/DashboardView';
 import PlanningView from './weaver/PlanningView';
-import WritingSuiteView from './weaver/WritingSuiteView';
 import FormattingView from './weaver/FormattingView';
 import CoverView from './weaver/CoverView';
 import ConsultationView from './weaver/ConsultationView';
@@ -167,17 +166,6 @@ export default function Scriptorium({ onBack }) {
               <span>Planning & Drafting</span>
             </button>
 
-            <button
-              onClick={() => { setActiveTab('writing_suite'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-mono tracking-wide uppercase transition-all cursor-pointer ${
-                activeTab === 'writing_suite'
-                  ? 'bg-purple-950/30 border border-purple-500/20 text-purple-200'
-                  : 'border border-transparent text-slate-400 hover:bg-slate-900/40 hover:text-slate-200'
-              }`}
-            >
-              <Edit3 className="w-4 h-4 shrink-0" />
-              <span>Writing Suite</span>
-            </button>
 
             <button
               onClick={() => { setActiveTab('formatting'); setIsSidebarOpen(false); }}
@@ -326,11 +314,6 @@ export default function Scriptorium({ onBack }) {
                 <Feather className="w-4 h-4 text-purple-400" />
                 <span className="font-serif font-medium text-base tracking-wide text-white uppercase">Planning & Drafting</span>
               </>
-            ) : activeTab === 'writing_suite' ? (
-              <>
-                <Edit3 className="w-4 h-4 text-purple-400" />
-                <span className="font-serif font-medium text-base tracking-wide text-white uppercase">Writing Suite</span>
-              </>
             ) : activeTab === 'formatting' ? (
               <>
                 <FileText className="w-4 h-4 text-purple-400" />
@@ -394,9 +377,7 @@ export default function Scriptorium({ onBack }) {
             <PlanningView key={activeBookId} bookId={activeBookId} />
           )}
 
-          {activeTab === 'writing_suite' && (
-            <WritingSuiteView key={activeBookId} bookId={activeBookId} />
-          )}
+
 
           {activeTab === 'formatting' && (
             <FormattingView key={activeBookId} bookId={activeBookId} />

@@ -32,6 +32,7 @@ export default function CoverView() {
   const [titleColor, setTitleColor] = useState('#FCFBF8');
   const [titleSize, setTitleSize] = useState(24);
   const [titlePosition, setTitlePosition] = useState({ x: 50, y: 15 }); // values in percentage
+  const [author, setAuthor] = useState('DR. LEKHAA VANCE');
   
   // Brush Layer Canvas Drawing
   const [isDrawing, setIsDrawing] = useState(false);
@@ -180,6 +181,13 @@ export default function CoverView() {
       const textX = canvas.width * (titlePosition.x / 100);
       const textY = canvas.height * (titlePosition.y / 100);
       ctx.fillText(title, textX, textY);
+
+      // 4. Draw Typography Author Layer
+      ctx.fillStyle = titleColor === '#FCFBF8' ? 'rgba(252,251,248,0.85)' : titleColor;
+      ctx.textAlign = 'center';
+      ctx.font = `bold 14px sans-serif`;
+      ctx.shadowBlur = 4;
+      ctx.fillText(author.toUpperCase(), canvas.width / 2, canvas.height - 40);
 
       // Trigger download
       const element = document.createElement("a");
@@ -361,6 +369,14 @@ export default function CoverView() {
                   onChange={e => setTitle(e.target.value)}
                   className="w-full bg-slate-950 text-sm border border-slate-800 p-2 rounded-lg focus:outline-none focus:border-purple-500/25 text-slate-200 font-serif"
                   placeholder="Cover Book Title..."
+                />
+                
+                <input 
+                  type="text" 
+                  value={author}
+                  onChange={e => setAuthor(e.target.value)}
+                  className="w-full bg-slate-950 text-sm border border-slate-800 p-2 rounded-lg focus:outline-none focus:border-purple-500/25 text-slate-200 font-mono text-xs uppercase"
+                  placeholder="Cover Author Name..."
                 />
                 
                 <div className="grid grid-cols-2 gap-2">
@@ -554,6 +570,20 @@ export default function CoverView() {
                     {title}
                   </h2>
                   <span className="w-6 h-px bg-white/40 mx-auto mt-1 block" />
+                </div>
+
+                {/* Author Name overlay in visual preview */}
+                <div className="w-full text-center px-4 mb-4">
+                  <span 
+                    style={{
+                      color: titleColor === '#FCFBF8' ? 'rgba(252,251,248,0.85)' : titleColor,
+                      textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                      letterSpacing: '0.2em'
+                    }}
+                    className="text-[9px] font-mono font-bold uppercase"
+                  >
+                    {author}
+                  </span>
                 </div>
               </div>
 

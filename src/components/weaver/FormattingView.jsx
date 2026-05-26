@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, Eye, Upload, Sparkles, X, ChevronRight, ChevronDown, 
-  Search, BookOpen, Layers, Type, Columns, Check, RefreshCw
+  Search, BookOpen, Layers, Type, Columns, Check, RefreshCw, Download
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -304,6 +304,28 @@ export default function FormattingView({ bookId = 'default_book' }) {
     }
   };
 
+  const downloadFormattedManuscript = () => {
+    if (!manuscriptText.trim()) return;
+    
+    const compiledText = `=====================================================
+BOOK TITLE: ${bookTitle.toUpperCase()}
+AUTHOR: ${authorName.toUpperCase()}
+TRIM SIZE: ${trimSize}
+GENRE PRESET STYLE: ${activePreset.name} (${activePreset.subtitle})
+=====================================================
+
+${manuscriptText}
+`;
+    
+    const element = document.createElement("a");
+    const file = new Blob([compiledText], { type: 'text/plain;charset=utf-8' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${bookTitle.replace(/\s+/g, '_')}_formatted_manuscript.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
   return (
     <div className="space-y-8 animate-fade-in text-slate-100 font-serif">
       {/* Title Header */}
@@ -540,11 +562,20 @@ export default function FormattingView({ bookId = 'default_book' }) {
               3D BOOK MOCKUP PRINT PREVIEW
               ========================================== */}
           <div className="space-y-3">
-            <div className="flex justify-between items-center pl-1">
-              <span className="text-sm font-mono uppercase text-slate-500 tracking-wider">3D Flip-Book Preview</span>
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">
-                4 pages - {activePreset.name} — {activePreset.subtitle}
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pl-1 pb-1 select-none">
+              <div className="space-y-0.5">
+                <span className="text-sm font-mono uppercase text-slate-500 tracking-wider">3D Flip-Book Preview</span>
+                <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest leading-none mt-0.5">
+                  Style: {activePreset.name} — {activePreset.subtitle} ({trimSize})
+                </p>
+              </div>
+
+              <button
+                onClick={downloadFormattedManuscript}
+                className="px-4 py-2.5 bg-purple-650 hover:bg-purple-600 text-xs font-mono font-bold text-white uppercase rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-900/10 border-none"
+              >
+                <Download className="w-3.5 h-3.5" /> Download Formatted Manuscript
+              </button>
             </div>
 
             {/* Physical Open Book mockup */}

@@ -20,15 +20,6 @@ const SERVICES = [
     rateINR: 0.2,
     type: 'per-word',
     icon: BookOpen,
-  },
-  {
-    id: 'publish',
-    name: 'Publishing Consultation',
-    desc: '1-on-1 session to navigate the industry.',
-    rateUSD: 50,
-    rateINR: 1000,
-    type: 'flat',
-    icon: Compass,
   }
 ];
 

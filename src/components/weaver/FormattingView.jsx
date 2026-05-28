@@ -111,38 +111,90 @@ const GLOSSARY_DATA = [
   { id: 'folio', term: 'Folio', def: 'The technical term for page numbers printed at either the top or bottom of pages.' }
 ];
 
+const getFormattingStateKey = (bookId) => `oss_formatting_state_${bookId}`;
+
+const getSavedFormattingState = (bookId) => {
+  try {
+    const raw = localStorage.getItem(getFormattingStateKey(bookId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    console.error('Failed to load formatting state:', error);
+    return {};
+  }
+};
+
 export default function FormattingView({ bookId = 'default_book' }) {
   const { user, setIsAuthModalOpen } = useAuth();
-  
+  const savedState = getSavedFormattingState(bookId);
+
   // Custom states
-  const [trimSize, setTrimSize] = useState('Trade — 6 x 9"');
-  const [bookTitle, setBookTitle] = useState('Your Book');
-  const [authorName, setAuthorName] = useState('Your Name');
-  const [activePresetId, setActivePresetId] = useState('novel');
+  const [trimSize, setTrimSize] = useState(savedState.trimSize || 'Trade — 6 x 9"');
+  const [bookTitle, setBookTitle] = useState(savedState.bookTitle || 'Your Book');
+  const [authorName, setAuthorName] = useState(savedState.authorName || 'Your Name');
+  const [activePresetId, setActivePresetId] = useState(savedState.activePresetId || 'novel');
   const [manuscriptText, setManuscriptText] = useState(
+    savedState.manuscriptText ||
     `Chapter One\n\nThe Whisper of the Tide\n\nThe harbor was silent that morning. Mira pressed her palm to the cold stone, and the sea answered her with a hush that was not wind. Somewhere beneath the obsidian water, the siren was singing a name she had not heard in twenty years.`
   );
-  
-  const [manuscriptSourceTab, setManuscriptSourceTab] = useState('import'); // 'import' | 'upload'
+
+  const [manuscriptSourceTab, setManuscriptSourceTab] = useState(savedState.manuscriptSourceTab || 'import'); // 'import' | 'upload'
   const [importSuccess, setImportSuccess] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-  const [assistedFileZoneAttached, setAssistedFileZoneAttached] = useState(false);
+  const [assistedFileZoneAttached, setAssistedFileZoneAttached] = useState(savedState.assistedFileZoneAttached || false);
   const [manualRequestStatus, setManualRequestStatus] = useState(''); // 'sending', 'success'
-  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState(savedState.uploadedFileName || '');
 
   // Chapter lists states for pick list
   const [writingChapters, setWritingChapters] = useState([]);
-  const [uploadedChapters, setUploadedChapters] = useState([]);
-  const [selectedChapterId, setSelectedChapterId] = useState('');
-  
+  const [uploadedChapters, setUploadedChapters] = useState(Array.isArray(savedState.uploadedChapters) ? savedState.uploadedChapters : []);
+  const [selectedChapterId, setSelectedChapterId] = useState(savedState.selectedChapterId || '');
+
   // Glossary Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [expandedGlossaryItems, setExpandedGlossaryItems] = useState({
+  const [searchQuery, setSearchQuery] = useState(savedState.searchQuery || '');
+  const [expandedGlossaryItems, setExpandedGlossaryItems] = useState(savedState.expandedGlossaryItems || {
     'bleed': true // Open first item by default
   });
 
   const activePreset = GENRE_PRESETS.find(p => p.id === activePresetId) || GENRE_PRESETS[0];
 
+  useEffect(() => {
+    const payload = {
+      trimSize,
+      bookTitle,
+      authorName,
+      activePresetId,
+      manuscriptText,
+      manuscriptSourceTab,
+      assistedFileZoneAttached,
+      uploadedFileName,
+      uploadedChapters,
+      selectedChapterId,
+      searchQuery,
+      expandedGlossaryItems,
+    };
+
+    try {
+      localStorage.setItem(getFormattingStateKey(bookId), JSON.stringify(payload));
+    } catch (error) {
+      console.error('Failed to save formatting state:', error);
+    }
+  }, [
+    bookId,
+    trimSize,
+    bookTitle,
+    authorName,
+    activePresetId,
+    manuscriptText,
+    manuscriptSourceTab,
+    assistedFileZoneAttached,
+    uploadedFileName,
+    uploadedChapters,
+    selectedChapterId,
+    searchQuery,
+    expandedGlossaryItems,
+  ]);
   // Helper to load Scriptorium chapters from local storage
   const loadWritingSuiteChapters = () => {
     try {
@@ -167,12 +219,27 @@ export default function FormattingView({ bookId = 'default_book' }) {
 
   // Sync chapters on mount
   useEffect(() => {
-    const chapters = loadWritingSuiteChapters();
-    if (chapters.length > 0) {
-      setSelectedChapterId(chapters[0].id);
-      setManuscriptText(`${chapters[0].title}\n\n${chapters[0].content}`);
-    }
-  }, [bookId]);
+  const chapters = loadWritingSuiteChapters();
+
+  const preferredChapterId =
+    savedState.selectedChapterId || chapters[0]?.id || '';
+
+  if (preferredChapterId) {
+    setSelectedChapterId(preferredChapterId);
+  }
+
+  // Prevent overwrite of saved manuscript after refresh
+  const existingSavedState = localStorage.getItem(
+    getFormattingStateKey(bookId)
+  );
+
+  if (!existingSavedState && chapters.length > 0) {
+    const found =
+      chapters.find(c => c.id === preferredChapterId) || chapters[0];
+
+    setManuscriptText(`${found.title}\n\n${found.content}`);
+  }
+}, [bookId]);
 
   // Load from Scriptorium
   const handleImportFromWritingSuite = () => {
@@ -180,6 +247,7 @@ export default function FormattingView({ bookId = 'default_book' }) {
     if (chapters.length > 0) {
       const found = chapters.find(c => c.id === selectedChapterId) || chapters[0];
       setSelectedChapterId(found.id);
+      setManuscriptSourceTab('import');
       setManuscriptText(`${found.title}\n\n${found.content}`);
       setImportSuccess(true);
       setTimeout(() => setImportSuccess(false), 2000);
@@ -207,6 +275,10 @@ export default function FormattingView({ bookId = 'default_book' }) {
   const handleDocxOrTxtUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    setManuscriptSourceTab('upload');
+    setUploadedFileName(file.name);
+    setAssistedFileZoneAttached(true);
 
     if (file.name.endsWith('.txt')) {
       const reader = new FileReader();

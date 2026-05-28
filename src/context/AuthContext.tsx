@@ -1,10 +1,16 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase/config';
-import AuthModal from '../components/AuthModal';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  User,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
+import { auth, googleProvider } from "../firebase/config";
+import AuthModal from "../components/AuthModal";
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   loading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
@@ -15,16 +21,28 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+
+      if (currentUser) {
+        const idToken = await currentUser.getIdToken();
+        setToken(idToken);
+      } else {
+        setToken(null);
+      }
+
       setLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -40,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await signOut(auth);
+      setToken(null);
     } catch (error) {
       console.error("Error signing out", error);
     }
@@ -54,7 +73,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuthAndExecute, isAuthModalOpen, setIsAuthModalOpen }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        logout,
+        checkAuthAndExecute,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+      }}
+    >
       {children}
       <AuthModal />
     </AuthContext.Provider>
@@ -64,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

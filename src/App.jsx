@@ -4,6 +4,7 @@ import { useAuth } from "./context/AuthContext";
 import { api } from "./services/api";
 import LandingPage from "./components/LandingPage";
 import Scriptorium from "./components/Scriptorium";
+import Sanctum from "./components/Sanctum";
 
 function LandingRoute() {
   const navigate = useNavigate();
@@ -22,61 +23,10 @@ function WeaverRoute() {
   return <Scriptorium onBack={() => navigate("/")} />;
 }
 
-function ScholarComingSoon() {
+function ScholarRoute() {
   const navigate = useNavigate();
 
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background:
-          "linear-gradient(135deg, #020617 0%, #111827 50%, #1e293b 100%)",
-        padding: "24px",
-        fontFamily: "Arial",
-        color: "white",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "520px",
-          background: "rgba(255,255,255,0.08)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          backdropFilter: "blur(18px)",
-          borderRadius: "28px",
-          padding: "42px",
-          textAlign: "center",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-        }}
-      >
-        <h1 style={{ fontSize: "34px", marginBottom: "12px" }}>
-          Scholar’s Sanctum
-        </h1>
-        <p style={{ color: "#cbd5e1", lineHeight: 1.7, marginBottom: "28px" }}>
-          This path is available, and the writing flow is in the project.
-          The main public submission flow is under Weaver Path.
-        </p>
-        <button
-          onClick={() => navigate("/")}
-          style={{
-            padding: "14px 22px",
-            borderRadius: "14px",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "16px",
-            fontWeight: "bold",
-            background: "linear-gradient(135deg,#f8fafc,#e2e8f0)",
-            color: "#0f172a",
-          }}
-        >
-          Back to Home
-        </button>
-      </div>
-    </div>
-  );
+  return <Sanctum onBack={() => navigate("/")} />;
 }
 
 function AdminGate() {
@@ -554,7 +504,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingRoute />} />
         <Route path="/weaver" element={<WeaverRoute />} />
-        <Route path="/scholar" element={<ScholarComingSoon />} />
+        <Route path="/scholar" element={<ScholarRoute />} />
         <Route path="/dashboard" element={<AdminGate />} />
       </Routes>
     </>

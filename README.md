@@ -92,7 +92,3 @@ A structured, research-centric productivity workspace tailored for academic writ
     The compiled build assets will be written to the `/dist` directory.
 
 ---
-
-## 🛡️ License
-
-This project is licensed under the **MIT License** - see the [LICENSE](./LICENSE) file for details.

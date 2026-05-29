@@ -72,7 +72,7 @@ export default function Sanctum({ onBack }) {
         transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:flex
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div>
+        <div className="flex-1 overflow-y-auto scrollbar-thin">
           {/* Brand Header */}
           <div 
             onClick={() => { onBack(); setIsSidebarOpen(false); }}

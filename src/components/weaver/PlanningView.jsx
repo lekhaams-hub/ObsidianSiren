@@ -909,7 +909,7 @@ export default function PlanningView({ bookId = 'default_book' }) {
               </div>
 
               {/* Character Detail Panel */}
-              <div className="lg:col-span-3 p-6 space-y-6 relative overflow-y-auto max-h-[85vh] pr-3 scrollbar-thin">
+              <div className="lg:col-span-3 p-6 space-y-6 relative pr-3">
                 {!user && <AuthOverlay message="Sign in to edit character details and add custom properties." />}
                 
                 {/* 1. Core Identity Card */}
@@ -1959,7 +1959,7 @@ export default function PlanningView({ bookId = 'default_book' }) {
             TAB: WORLD BUILDING LAB
             ========================================================================== */}
         {activeTab === 'world' && (
-          <div className="p-6 space-y-8 relative max-h-[500px] overflow-y-auto pr-2">
+          <div className="p-6 space-y-8 relative pr-2">
             {!user && <AuthOverlay message="Sign in to save and modify world building blueprints." />}
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -2389,7 +2389,7 @@ export default function PlanningView({ bookId = 'default_book' }) {
             TAB: CONFLICT & ARCS
             ========================================================================== */}
         {activeTab === 'arcs' && (
-          <div className="p-6 space-y-6 relative max-h-[500px] overflow-y-auto">
+          <div className="p-6 space-y-6 relative">
             {!user && <AuthOverlay message="Sign in to save structural conflict parameters." />}
             
             <div>
@@ -2478,7 +2478,7 @@ export default function PlanningView({ bookId = 'default_book' }) {
             TAB: SYNOPSIS
             ========================================================================== */}
         {activeTab === 'synopsis' && (
-          <div className="p-6 space-y-6 relative max-h-[500px] overflow-y-auto">
+          <div className="p-6 space-y-6 relative">
             {!user && <AuthOverlay message="Sign in to save outlines and generate AI synopses." />}
             
             <div>

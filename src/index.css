@@ -7,7 +7,7 @@
 
 @layer base {
   html {
-    font-size: 124%;
+    font-size: 114%;
   }
   body {
     @apply bg-[#0B0F19] text-slate-100 antialiased font-serif;

@@ -56,7 +56,7 @@ export default function Sanctum({ onBack }) {
   ]);
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 flex font-sans selection:bg-purple-500/30 selection:text-purple-200">
+    <div className="h-screen overflow-hidden bg-[#07090e] text-slate-100 flex font-sans selection:bg-purple-500/30 selection:text-purple-200">
       
       {/* Sidebar background overlay for mobile drawer */}
       {isSidebarOpen && (
@@ -246,7 +246,7 @@ export default function Sanctum({ onBack }) {
       </aside>
 
       {/* 2. MAIN APPLICATION CONTENT VIEW */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* Top Header Navbar */}
         <header className="px-4 sm:px-8 py-4 border-b border-slate-900 flex justify-between items-center bg-[#07090e]/60 backdrop-blur-md select-none z-10">

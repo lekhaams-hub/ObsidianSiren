@@ -806,9 +806,9 @@ export default function PlanningView({ bookId = 'default_book' }) {
     <div className="space-y-6 animate-fade-in">
       {/* Title Header */}
       <div>
-        <h3 className="text-xs font-mono tracking-[0.3em] text-purple-400 uppercase">Window I</h3>
-        <h1 className="text-4xl font-serif text-white tracking-tight">Planning & Drafting</h1>
-        <p className="text-slate-400 text-sm font-light mt-1">
+        <span className="text-xs font-mono font-bold tracking-[0.25em] text-purple-400 uppercase">Window I</span>
+        <h1 className="text-4xl font-serif text-white tracking-tight mt-1.5">Planning & Drafting</h1>
+        <p className="text-slate-400 text-sm font-light leading-relaxed mt-2 max-w-3xl">
           From deep character psyche mappings to whiteboard schemas, visual maps, and typewriter drafts—organize your complete creative vault.
         </p>
       </div>

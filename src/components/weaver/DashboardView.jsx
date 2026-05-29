@@ -71,10 +71,10 @@ export default function DashboardView({ onNavigate }) {
   return (
     <div className="space-y-10 animate-fade-in">
       {/* Hero Welcome */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-mono tracking-[0.3em] text-purple-400 uppercase">Creative Studio</h3>
-        <h1 className="text-5xl font-serif text-white tracking-tight">The Weaver's Path</h1>
-        <p className="text-base text-slate-400 font-light max-w-xl">
+      <div>
+        <span className="text-xs font-mono font-bold tracking-[0.25em] text-purple-400 uppercase">Creative Studio</span>
+        <h1 className="text-4xl font-serif text-white tracking-tight mt-1.5">The Weaver's Path</h1>
+        <p className="text-slate-400 text-sm font-light leading-relaxed mt-2 max-w-3xl">
           Enter at any stage. The Siren keeps the threads of your journey, guiding your story from a faint spark to a brilliant shine.
         </p>
       </div>

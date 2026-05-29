@@ -101,7 +101,17 @@ export default function AskObsidianView() {
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in text-slate-100 max-w-7xl mx-auto pb-12">
+    <div className="space-y-8 animate-fade-in text-slate-100 max-w-7xl mx-auto pb-12">
+      {/* Title Header */}
+      <div>
+        <span className="text-xs font-mono font-bold tracking-[0.25em] text-purple-400 uppercase">Obsidian Oracle</span>
+        <h1 className="text-4xl font-serif text-white tracking-tight mt-1.5">Ask Obsidian</h1>
+        <p className="text-slate-400 text-sm font-light leading-relaxed mt-2 max-w-3xl">
+          Ask our virtual publishing oracle about print trim sizes, gutter margins, APA/MLA citation formatting, or manual editing rates.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       
       {/* LEFT COLUMN: INTERACTIVE AI PUBLISHING CHATBOT */}
       <div className="lg:col-span-2 bg-[#0C0D12]/40 border border-slate-900/80 p-4 sm:p-6 md:p-8 rounded-3xl flex flex-col justify-between h-[580px] shadow-sm relative">
@@ -246,6 +256,7 @@ export default function AskObsidianView() {
 
       </div>
 
+      </div>
     </div>
   );
 }

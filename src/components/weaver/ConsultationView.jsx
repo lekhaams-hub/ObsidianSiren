@@ -207,6 +207,15 @@ export default function ConsultationView({ currency = "USD" }) {
 
   return (
     <div className="space-y-10 animate-fade-in pb-12">
+      {/* Title Header */}
+      <div>
+        <span className="text-xs font-mono font-bold tracking-[0.25em] text-purple-400 uppercase">Expert Sanctuary</span>
+        <h1 className="text-4xl font-serif text-white tracking-tight mt-1.5">Publishing Atelier & Sanctuary</h1>
+        <p className="text-slate-400 text-sm font-light leading-relaxed mt-2 max-w-3xl">
+          Receive proofreading, developmental feedback, and publishing consultations from our industry experts.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {SERVICES.map((srv) => {
           const IconComponent = srv.icon;

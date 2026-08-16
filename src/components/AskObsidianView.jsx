@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Send, HelpCircle, Search, ChevronDown, ChevronRight, MessageSquare, BookOpen, Layers, DollarSign } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { queryAskObsidianAssistant } from '../services/ai';
 
 const FAQ_DATA = [
   {
@@ -48,7 +49,7 @@ export default function AskObsidianView() {
   const [chatMessages, setChatMessages] = useState([
     {
       sender: 'ai',
-      text: "Greetings, author. I am your virtual publishing assistant. Ask me anything about trim dimensions, gutter safety, MLA/APA citations, or manual typographer rates."
+      text: "Greetings, author. I am Obsidian Siren Studio's AI publishing assistant. Ask me only about book formatting, print layout, citation styling, gutter safety, manuscript workflow, or consultation rates."
     }
   ]);
   const [userInput, setUserInput] = useState('');
@@ -68,30 +69,23 @@ export default function AskObsidianView() {
     sendMessageToAI(prompt);
   };
 
-  const sendMessageToAI = (text) => {
+  const sendMessageToAI = async (text) => {
     setChatMessages(prev => [...prev, { sender: 'user', text }]);
     setUserInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      let reply = "";
-      const lower = text.toLowerCase();
-
-      if (lower.includes('trim') || lower.includes('size') || lower.includes('dimension')) {
-        reply = `### Obsidian Trim Sizes Guide:\n\n1. **Trade (6" x 9")**: Standard for novels, memoirs, and academic publications. Offers the most comfortable reading line-length.\n2. **Pocket Book (5" x 8")**: Classic paperback size. Excellent for pocket-sized fiction or pulps.\n3. **Hardcover (8" x 10")**: Perfect for photography collections, children's books, and heavy manuals.`;
-      } else if (lower.includes('gutter') || lower.includes('margin') || lower.includes('safety')) {
-        reply = `### Gutter Safety Margin:\n\nThe **Gutter** represents the additional inner margin allowance added to the binding spine of a book.\n- Without a gutter, text near the fold gets swallowed inside the binding glue.\n- **Obsidian Siren** automatically adds an **18px gutter safety margin** to your layout to guarantee maximum physical reading convenience.`;
-      } else if (lower.includes('mla') || lower.includes('apa') || lower.includes('chicago') || lower.includes('citation')) {
-        reply = `### Academic Styling Rules:\n\n- **MLA**: Focuses on student blocks, double-spaced lines, and \`LastName Page#\` in the top-right.\n- **APA**: Requires a dedicated separate Title Page with course coordinates, running heads, and bold titles.\n- **Chicago**: The classical standard for history and literature research, integrating superscript footnote references and a bottom footnote bibliography.`;
-      } else if (lower.includes('cost') || lower.includes('price') || lower.includes('fee') || lower.includes('rate') || lower.includes('expert')) {
-        reply = `### Publishing Atelier Consultation Rates:\n\n- **Proofreading**: $5 / ₹100 per 1000 words.\n- **Developmental Editing (Weaver) / Rewriting (Scholar)**: $10 / ₹200 per 1000 words.\n- **Publishing Consultation**: Flat $50 / ₹1000 per book.\n\n*Toggle the USD/INR currency selector at the top-right of your screen to adjust rates instantly!*`;
-      } else {
-        reply = `I am anchoring deep-sea frequencies to assist your publishing journey. If you need details on **Trim Sizes**, **Gutter Safety**, **Citations** (MLA, APA, Chicago), or **Expert Editing Costs**, type a keyword above or select one of the quick guide prompt pills below!`;
-      }
-
+    try {
+      const reply = await queryAskObsidianAssistant(text);
       setChatMessages(prev => [...prev, { sender: 'ai', text: reply }]);
+    } catch (error) {
+      console.error('Ask Obsidian error:', error);
+      setChatMessages(prev => [...prev, {
+        sender: 'ai',
+        text: 'Sorry, I could not generate an answer right now. Please ask a publishing-related question about Obsidian Siren Studio and try again.'
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 900);
+    }
   };
 
   const filteredFaqs = FAQ_DATA.filter(faq => 

@@ -1,8 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Eye, BookOpen, Compass, Upload, Sparkles } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+import { api } from "../../services/api";
 
 const SERVICES = [
   {
@@ -33,62 +32,6 @@ const SERVICES = [
     icon: Compass,
   },
 ];
-
-async function uploadManuscriptFile(file, token) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch(`${API_BASE}/api/uploads/manuscript`, {
-    method: "POST",
-    headers: token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : undefined,
-    body: formData,
-  });
-
-  const text = await response.text();
-
-  let data;
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = { message: text };
-  }
-
-  if (!response.ok) {
-    throw new Error(data.message || "File upload failed");
-  }
-
-  return data.file;
-}
-
-async function createSubmission(payload, token) {
-  const response = await fetch(`${API_BASE}/api/submissions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const text = await response.text();
-
-  let data;
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = { message: text };
-  }
-
-  if (!response.ok) {
-    throw new Error(data.message || "Failed to create submission");
-  }
-
-  return data;
-}
 
 export default function ConsultationView({ currency = "USD" }) {
   const { user, setIsAuthModalOpen } = useAuth();
@@ -160,23 +103,15 @@ export default function ConsultationView({ currency = "USD" }) {
 
       const token = await user.getIdToken();
 
-      let uploadedFile = null;
-      if (selectedFile) {
-        uploadedFile = await uploadManuscriptFile(selectedFile, token);
-      }
-
-      const payload = {
-        name: user.displayName || "Unknown User",
-        email: user.email || "",
-        phone: "Not Provided",
-        title: activeService.name,
-        manuscriptType: activeService.name,
-        message: notes || "Consultation request submitted.",
-        fileName: uploadedFile?.filename || selectedFile?.name || "",
-        filePath: uploadedFile?.path || "",
-      };
-
-      await createSubmission(payload, token);
+      await api.submitConsultation({
+        sourcePage: 'Weaver Mode > Expert Consultation',
+        service: activeService.name,
+        userName: user.displayName || "Unknown User",
+        userEmail: user.email || "",
+        wordCount: wordCount || "",
+        notes: notes || "",
+        file: selectedFile
+      }, token);
 
       setBookingStatus("success");
     } catch (err) {

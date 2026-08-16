@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Eye, BookOpen, Compass, Upload, Sparkles, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 
 const SERVICES = [
   {
@@ -31,6 +32,7 @@ export default function ExpertConsultationView({ currency = 'USD' }) {
   const [wordCount, setWordCount] = useState('50000');
   const [notes, setNotes] = useState('');
   const [fileName, setFileName] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [bookingStatus, setBookingStatus] = useState(''); // '', 'sending', 'success'
   
@@ -57,27 +59,55 @@ export default function ExpertConsultationView({ currency = 'USD' }) {
       const ext = file.name.split('.').pop().toLowerCase();
       if (['doc', 'docx', 'pdf'].includes(ext)) {
         setFileName(file.name);
+        setSelectedFile(file);
+      } else {
+        alert('Please upload only .doc, .docx, or .pdf files.');
       }
     }
   };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setFileName(e.target.files[0].name);
+      const file = e.target.files[0];
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (['doc', 'docx', 'pdf'].includes(ext)) {
+        setFileName(file.name);
+        setSelectedFile(file);
+      } else {
+        alert('Please upload only .doc, .docx, or .pdf files.');
+        e.target.value = '';
+      }
     }
   };
 
   // Submit booking
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
       setIsAuthModalOpen(true);
       return;
     }
     setBookingStatus('sending');
-    setTimeout(() => {
+
+    try {
+      const token = await user.getIdToken();
+
+      await api.submitConsultation({
+        sourcePage: 'Scholar Mode > Expert Consultation',
+        service: activeService.name,
+        userName: user.displayName || 'Unknown User',
+        userEmail: user.email || '',
+        wordCount: wordCount || '',
+        notes: notes || '',
+        file: selectedFile
+      }, token);
+
       setBookingStatus('success');
-    }, 1200);
+    } catch (err) {
+      console.error('Submission error:', err);
+      alert(err.message || 'Submission failed');
+      setBookingStatus('');
+    }
   };
 
   // Compute reactive price estimations
@@ -246,10 +276,11 @@ export default function ExpertConsultationView({ currency = 'USD' }) {
                   A final editorial proposal and booking calendar will be delivered to your inbox at <span className="font-mono text-purple-300 font-medium">{user?.email || 'your account email'}</span> within 24 hours.
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   setBookingStatus('');
                   setFileName('');
+                  setSelectedFile(null);
                   setNotes('');
                 }}
                 className="px-6 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-white hover:border-purple-500/20 transition-all cursor-pointer"

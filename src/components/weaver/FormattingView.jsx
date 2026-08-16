@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  FileText, Eye, Upload, Sparkles, X, ChevronRight, ChevronDown, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  FileText, Eye, Upload, Sparkles, X, ChevronRight, ChevronDown,
   Search, BookOpen, Layers, Type, Columns, Check, RefreshCw, Download
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 
 const GENRE_PRESETS = [
   {
@@ -145,6 +146,9 @@ export default function FormattingView({ bookId = 'default_book' }) {
   const [assistedFileZoneAttached, setAssistedFileZoneAttached] = useState(savedState.assistedFileZoneAttached || false);
   const [manualRequestStatus, setManualRequestStatus] = useState(''); // 'sending', 'success'
   const [uploadedFileName, setUploadedFileName] = useState(savedState.uploadedFileName || '');
+  const [manualFormattingNotes, setManualFormattingNotes] = useState(savedState.manualFormattingNotes || '');
+  const [manualFormattingFile, setManualFormattingFile] = useState(null);
+  const manualFileInputRef = useRef(null);
 
   // Chapter lists states for pick list
   const [writingChapters, setWritingChapters] = useState([]);
@@ -330,21 +334,39 @@ export default function FormattingView({ bookId = 'default_book' }) {
   };
 
   // Submit manual formatting request
-  const handleManualRequestSubmit = (e) => {
+  const handleManualRequestSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
       setIsAuthModalOpen(true);
       return;
     }
     setManualRequestStatus('sending');
-    setTimeout(() => {
+
+    try {
+      const token = await user.getIdToken();
+
+      await api.submitConsultation({
+        sourcePage: 'Weaver Mode > Expert Assisted Formatting',
+        service: 'Expert Assisted Formatting',
+        userName: user.displayName || 'Unknown User',
+        userEmail: user.email || '',
+        notes: manualFormattingNotes || '',
+        trimSize: trimSize,
+        genrePreset: `${activePreset.name} — ${activePreset.subtitle}`,
+        file: manualFormattingFile
+      }, token);
+
       setManualRequestStatus('success');
       setAssistedFileZoneAttached(false);
       setTimeout(() => {
         setIsManualModalOpen(false);
         setManualRequestStatus('');
       }, 2500);
-    }, 1500);
+    } catch (err) {
+      console.error('Manual formatting submission error:', err);
+      alert(err.message || 'Submission failed');
+      setManualRequestStatus('');
+    }
   };
 
   // Filter glossary based on search
@@ -921,17 +943,28 @@ ${manuscriptText}
 
                 <div className="space-y-1.5">
                   <span className="text-xs font-mono text-slate-500 uppercase block">Upload manuscript (.docx / .pdf / .rtf)</span>
-                  <div className="border border-dashed border-slate-900 bg-[#050608]/80 rounded-xl p-6 text-center cursor-pointer relative hover:border-purple-500/20 transition-all">
-                    <input 
-                      type="file" 
-                      accept=".docx,.pdf,.rtf"
-                      onChange={() => setAssistedFileZoneAttached(true)}
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  <div
+                    onClick={() => manualFileInputRef.current?.click()}
+                    className="border border-dashed border-slate-900 bg-[#050608]/80 rounded-xl p-6 text-center cursor-pointer relative hover:border-purple-500/20 transition-all"
+                  >
+                    <input
+                      ref={manualFileInputRef}
+                      type="file"
+                      accept=".docx,.pdf,.rtf,.doc,.txt"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setAssistedFileZoneAttached(true);
+                          setUploadedFileName(file.name);
+                          setManualFormattingFile(file);
+                        }
+                      }}
+                      className="hidden"
                     />
-                    <div className="flex flex-col items-center justify-center space-y-2 text-slate-500">
+                    <div className="flex flex-col items-center justify-center space-y-2">
                       <Upload className="w-5 h-5 text-purple-400" />
                       <span className="text-sm font-mono">
-                        {assistedFileZoneAttached ? 'Manuscript Attached ✅' : 'Upload manuscript for assisted formatting'}
+                        {assistedFileZoneAttached ? `Attached: ${uploadedFileName || 'manuscript'} ✅` : 'Upload manuscript for assisted formatting'}
                       </span>
                     </div>
                   </div>
@@ -939,8 +972,10 @@ ${manuscriptText}
 
                 <div className="space-y-1.5">
                   <span className="text-xs font-mono text-slate-500 uppercase block">Special Formatting Notes / Instructions</span>
-                  <textarea 
-                    placeholder="Describe specific spacing preferences, headers, fonts, drop-cap wishes, or margin specifications..." 
+                  <textarea
+                    value={manualFormattingNotes}
+                    onChange={(e) => setManualFormattingNotes(e.target.value)}
+                    placeholder="Describe specific spacing preferences, headers, fonts, drop-cap wishes, or margin specifications..."
                     className="w-full bg-[#050608]/90 border border-slate-900 p-3 rounded-lg focus:outline-none focus:border-purple-500/25 text-sm text-slate-200 h-20 resize-none font-serif"
                   />
                 </div>

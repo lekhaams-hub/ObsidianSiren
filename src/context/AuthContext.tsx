@@ -5,7 +5,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
-import { auth, googleProvider } from "../firebase/config";
+import { auth, googleProvider, firebaseConfigured } from "../firebase/config";
 import AuthModal from "../components/AuthModal";
 
 interface AuthContextType {
@@ -30,6 +30,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
+    if (!firebaseConfigured || !auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
@@ -47,6 +52,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const login = async () => {
+    if (!firebaseConfigured || !auth || !googleProvider) {
+      alert(
+        "Firebase is not configured. Please provide valid Firebase env vars in .env to enable Google sign-in."
+      );
+      return;
+    }
+
     try {
       await signInWithPopup(auth, googleProvider);
       setIsAuthModalOpen(false);
@@ -56,6 +68,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const logout = async () => {
+    if (!firebaseConfigured || !auth) {
+      return;
+    }
+
     try {
       await signOut(auth);
       setToken(null);
